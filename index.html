@@ -34,7 +34,7 @@ select option{background:#131f33;color:#e2e8f0}
    🔑 ROOM KEY — ทีมทุกคนต้องใช้ key เดียวกัน
    เปลี่ยนได้ถ้าต้องการ room ส่วนตัวมากขึ้น
    ══════════════════════════════════════════ */
-const ROOM_KEY = 'rabbiz-teamhub-2026-v1';
+const ROOM_KEY = 'rabbiz-teamhub-2026-v2';
 
 window.DB = Gun([
   'https://gun-manhattan.herokuapp.com/gun',
@@ -79,31 +79,30 @@ const PRIO={
   low:   {label:"ต่ำ",    color:C.green, bg:C.greenBg},
 };
 const SEED_TEAM=[
-  {id:1, name:"อาร์ต",  surname:"",        role:"admin",   dept:"ผู้บริหาร",     initials:"CEO",color:"#f59e0b",phone:"081-000-0001",active:true,pin:"1111"},
-  {id:2, name:"ธนกฤต", surname:"วงศ์ไทย",  role:"engineer",dept:"โครงสร้าง",     initials:"ธก", color:"#3b82f6",phone:"081-000-0002",active:true,pin:"2222"},
-  {id:3, name:"สมชาย", surname:"พัฒนา",    role:"engineer",dept:"ไฟฟ้า",         initials:"สช", color:"#10b981",phone:"081-000-0003",active:true,pin:"3333"},
-  {id:4, name:"วิภา",  surname:"ศรีสุข",   role:"manager", dept:"บริหารโครงการ",  initials:"วภ", color:"#8b5cf6",phone:"081-000-0004",active:true,pin:"4444"},
-  {id:5, name:"ประทีป",surname:"แสงทอง",  role:"foreman", dept:"หัวหน้าช่าง",    initials:"ปท", color:"#ef4444",phone:"081-000-0005",active:true,pin:"5555"},
-  {id:6, name:"มาลี",  surname:"รักดี",    role:"engineer",dept:"MEP",            initials:"มล", color:"#06b6d4",phone:"081-000-0006",active:true,pin:"6666"},
+  {id:1,name:"MAX", surname:"",role:"engineer",dept:"วิศวกร",initials:"MX", color:"#f59e0b",phone:"",active:true,pin:"1111"},
+  {id:2,name:"KORN",surname:"",role:"engineer",dept:"วิศวกร",initials:"KN", color:"#3b82f6",phone:"",active:true,pin:"1111"},
+  {id:3,name:"ONE", surname:"",role:"engineer",dept:"วิศวกร",initials:"ON", color:"#10b981",phone:"",active:true,pin:"1111"},
+  {id:4,name:"TAE", surname:"",role:"engineer",dept:"วิศวกร",initials:"TA", color:"#8b5cf6",phone:"",active:true,pin:"1111"},
+  {id:5,name:"FFF", surname:"",role:"engineer",dept:"วิศวกร",initials:"FF", color:"#ef4444",phone:"",active:true,pin:"1111"},
+  {id:6,name:"IMM", surname:"",role:"engineer",dept:"วิศวกร",initials:"IM", color:"#06b6d4",phone:"",active:true,pin:"1111"},
+  {id:7,name:"ONE", surname:"(2)",role:"engineer",dept:"วิศวกร",initials:"O2",color:"#f97316",phone:"",active:true,pin:"1111"},
 ];
 const SEED_TASKS=[
-  {id:"t1",title:"ตรวจ Shop Drawing R1–R3",    project:"nara",      uid:2,priority:"high",  status:"todo",      deadline:"2 เม.ย. 69",   desc:"ตรวจ R1–R3 พร้อม mark-up กลับ",ts:100001},
-  {id:"t2",title:"Inspection MEP Hotel Wing",   project:"nara",      uid:6,priority:"high",  status:"inprogress",deadline:"1 เม.ย. 69",   desc:"MEP ชั้น 1–5 Hotel Wing",       ts:100002},
-  {id:"t3",title:"วางเหล็กฐานราก C2",          project:"nara",      uid:5,priority:"medium",status:"inprogress",deadline:"5 เม.ย. 69",   desc:"ตามแบบ SD-C2-001",              ts:100003},
-  {id:"t4",title:"ซ่อมระบบไฟฟ้า P3",           project:"park",      uid:3,priority:"urgent",status:"inprogress",deadline:"วันนี้",       desc:"P3 ทั้งหมด 12 จุด",             ts:100004},
-  {id:"t5",title:"ส่งมอบ RABBiZBox Batch 12",   project:"box",       uid:4,priority:"medium",status:"todo",      deadline:"20 เม.ย. 69",  desc:"5 ยูนิต 20ft Standard",         ts:100005},
-  {id:"t6",title:"Load Test หลังคาโกดัง",       project:"warehouse", uid:2,priority:"medium",status:"review",    deadline:"10 เม.ย. 69",  desc:"ทดสอบตาม EIT 1009",             ts:100006},
-  {id:"t7",title:"ตรวจรับ ichi cha Teahouse",  project:"nara",      uid:4,priority:"low",   status:"done",      deadline:"28 มี.ค. 69",  desc:"Completion certificate",        ts:100007},
+  {id:"t1",title:"ตรวจ Shop Drawing R1–R3",   project:"nara",      uid:1,priority:"high",  status:"todo",      deadline:"5 เม.ย. 69", desc:"ตรวจ R1–R3 พร้อม mark-up",ts:100001},
+  {id:"t2",title:"Inspection MEP Hotel Wing",  project:"nara",      uid:2,priority:"high",  status:"inprogress",deadline:"3 เม.ย. 69", desc:"MEP ชั้น 1–5",             ts:100002},
+  {id:"t3",title:"วางเหล็กฐานราก C2",         project:"nara",      uid:3,priority:"medium",status:"inprogress",deadline:"8 เม.ย. 69", desc:"ตามแบบ SD-C2-001",         ts:100003},
+  {id:"t4",title:"ซ่อมระบบไฟฟ้า P3",          project:"park",      uid:4,priority:"urgent",status:"inprogress",deadline:"วันนี้",     desc:"P3 ทั้งหมด 12 จุด",        ts:100004},
+  {id:"t5",title:"ส่งมอบ RABBiZBox Batch 12", project:"box",       uid:5,priority:"medium",status:"todo",      deadline:"20 เม.ย. 69",desc:"5 ยูนิต 20ft Standard",    ts:100005},
+  {id:"t6",title:"Load Test หลังคาโกดัง",     project:"warehouse", uid:6,priority:"medium",status:"review",    deadline:"10 เม.ย. 69",desc:"ทดสอบตาม EIT 1009",        ts:100006},
+  {id:"t7",title:"ตรวจรับ ichi cha Teahouse", project:"nara",      uid:7,priority:"low",   status:"done",      deadline:"28 มี.ค. 69",desc:"Completion certificate",   ts:100007},
 ];
 const SEED_MSGS=[
-  {proj:"nara",uid:4,text:"อัพเดท NARA: งานฐานรากอาคาร C1 เสร็จ 70% แล้วครับ ทุกอย่างตามแผน 💪",time:"09:15",date:"31 มี.ค. 69",ts:200001},
-  {proj:"nara",uid:2,text:"ตรวจ Shop Drawing R1 แล้วครับ มีแก้เล็กน้อยชั้น 2 จะส่ง mark-up คืนนี้",time:"10:30",date:"31 มี.ค. 69",ts:200002},
-  {proj:"nara",uid:5,text:"เหล็ก DB16 มาครบ 100% เริ่มวางพรุ่งนี้ 07:00 น. ✅",time:"11:45",date:"31 มี.ค. 69",ts:200003},
-  {proj:"nara",uid:6,text:"แบบ MEP ชั้น 2–4 ส่ง revision แล้วนะคะ มีแก้ Chiller B1 ด้วย",time:"14:05",date:"31 มี.ค. 69",ts:200004},
-  {proj:"park",uid:4,text:"งานซ่อม Zone B เสร็จแล้วครับ ผู้เช่าเข้าได้เลย",time:"08:00",date:"31 มี.ค. 69",ts:200010},
-  {proj:"park",uid:3,text:"สปริงเกอร์ Zone A ผ่านทุกจุดครับ ✅",time:"11:00",date:"31 มี.ค. 69",ts:200011},
-  {proj:"warehouse",uid:2,text:"EIA ผ่านแล้วครับ เริ่มก่อสร้างได้ทันที 🎉",time:"07:30",date:"31 มี.ค. 69",ts:200020},
-  {proj:"box",uid:4,text:"Order ใหม่ 5 ยูนิต 20ft ต้องเสร็จใน 3 สัปดาห์ครับ",time:"08:00",date:"31 มี.ค. 69",ts:200030},
+  {proj:"nara",     uid:1,text:"สวัสดีทีมงานครับ เริ่มใช้ระบบ RABBiZ TeamHub กันได้เลย 🚀",                  time:"09:00",date:"2 เม.ย. 69",ts:200001},
+  {proj:"nara",     uid:2,text:"รับทราบครับ กำลังดู Shop Drawing R1–R3 อยู่ครับ",                             time:"09:05",date:"2 เม.ย. 69",ts:200002},
+  {proj:"nara",     uid:3,text:"MEP ชั้น 1 ตรวจเสร็จแล้ว กำลังทำชั้น 2 ครับ 💪",                             time:"09:10",date:"2 เม.ย. 69",ts:200003},
+  {proj:"park",     uid:4,text:"ระบบไฟฟ้า P3 กำลังแก้ไขอยู่ครับ คาดเสร็จวันนี้",                             time:"08:30",date:"2 เม.ย. 69",ts:200010},
+  {proj:"warehouse",uid:5,text:"อยู่ที่โกดังครับ รอ Load Test อุปกรณ์มาแล้ว",                                 time:"07:30",date:"2 เม.ย. 69",ts:200020},
+  {proj:"box",      uid:6,text:"Batch 12 เริ่มผลิตแล้วครับ ตามกำหนด",                                          time:"08:00",date:"2 เม.ย. 69",ts:200030},
 ];
 
 /* ─── GUN HOOKS ─── */
@@ -129,8 +128,11 @@ function useGunTeam(){
   useEffect(()=>{
     window.DB.get('team').map().on((data,key)=>{
       if(!data||key==='_'||typeof data!=='object')return;
-      store.current[key]={...data};
-      const arr=Object.values(store.current).filter(x=>x&&x.id).sort((a,b)=>a.id-b.id);
+      if(data._d)delete store.current[key];
+      else store.current[key]={...data};
+      const arr=Object.values(store.current)
+        .filter(x=>x&&x.id&&!x._d)
+        .sort((a,b)=>a.id-b.id);
       if(arr.length>0)setTeam(arr);
     });
   },[]);
@@ -354,7 +356,7 @@ function ChatView({proj,me,team,projects}){
       {/* Messages */}
       <div style={{flex:1,overflow:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:2}}>
         {msgs.map((msg,idx)=>{
-          const user=team.find(m=>m.id===msg.uid)||SEED_TEAM[0];
+          const user=team.find(m=>m.id===msg.uid)||(team[0]||{initials:"?",color:C.bg4,name:"Unknown",surname:"",dept:""});
           const isSelf=msg.uid===me.id;
           const showDate=idx===0||(msgs[idx-1].date!==msg.date);
           const isMentioned=msg.text&&msg.text.includes(`@${me.name}`);
@@ -378,23 +380,29 @@ function ChatView({proj,me,team,projects}){
         <div ref={botRef}/>
       </div>
 
-      {/* @mention dropdown */}
-      {mentionList.length>0&&(
-        <div style={{position:"absolute",bottom:68,left:80,right:20,zIndex:50,background:C.bg2,border:`1px solid ${C.amber}50`,borderRadius:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.5)",maxHeight:180,overflowY:"auto"}}>
-          <div style={{padding:"6px 12px",fontSize:10,fontWeight:700,color:C.amber,borderBottom:`1px solid ${C.bd}`,textTransform:"uppercase",letterSpacing:"0.05em"}}>เลือกสมาชิก</div>
-          {mentionList.map(m=>(
-            <div key={m.id} onClick={()=>insertMention(m)} style={{padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background=C.bg3}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <Av initials={m.initials} color={m.color} size={28}/>
-              <div><div style={{fontSize:13,fontWeight:600}}>{m.name} {m.surname}</div><div style={{fontSize:11,color:C.textM}}>{m.dept}</div></div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Input bar */}
       <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bd}`,display:"flex",gap:8,background:C.bg1,flexShrink:0,alignItems:"center",position:"relative"}}>
+        {/* @mention dropdown — anchored above input bar */}
+        {mentionList.length>0&&(
+          <div style={{position:"absolute",bottom:"100%",left:60,right:16,marginBottom:6,zIndex:50,background:C.bg2,border:`1px solid ${C.amber}60`,borderRadius:10,overflow:"hidden",boxShadow:"0 -4px 24px rgba(0,0,0,.5)",maxHeight:200,overflowY:"auto"}}>
+            <div style={{padding:"5px 12px",fontSize:10,fontWeight:700,color:C.amber,borderBottom:`1px solid ${C.bd}`,textTransform:"uppercase",letterSpacing:"0.05em",background:C.bg3}}>
+              💬 mention สมาชิก — Enter เพื่อเลือก
+            </div>
+            {mentionList.map((m,i)=>(
+              <div key={m.id} onClick={()=>insertMention(m)}
+                style={{padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,transition:"background .1s",background:i===0?C.amberBg:"transparent"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.bg3}
+                onMouseLeave={e=>e.currentTarget.style.background=i===0?C.amberBg:"transparent"}>
+                <Av initials={m.initials} color={m.color} size={28}/>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600}}>{m.name} {m.surname}</div>
+                  <div style={{fontSize:11,color:C.textM}}>{m.dept}</div>
+                </div>
+                {i===0&&<span style={{marginLeft:"auto",fontSize:10,color:C.amber,background:C.amberBg,padding:"2px 7px",borderRadius:99}}>↵</span>}
+              </div>
+            ))}
+          </div>
+        )}
         <Av initials={me.initials} color={me.color} size={30}/>
         <div style={{flex:1,position:"relative"}}>
           <input ref={inputRef} value={input} onChange={handleInput}
@@ -402,7 +410,7 @@ function ChatView({proj,me,team,projects}){
               if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(mentionList.length>0)insertMention(mentionList[0]);else send();}
               if(e.key==="Escape")setMentionQ(null);
             }}
-            placeholder={`ส่งข้อความ... พิมพ์ @ เพื่อ mention สมาชิก (Enter)`}
+            placeholder="ส่งข้อความ... พิมพ์ @ เพื่อ mention (Enter)"
             style={{width:"100%",background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:10,padding:"9px 14px",color:C.text,fontSize:13.5,outline:"none",fontFamily:"inherit"}}/>
         </div>
         <button onClick={send} disabled={!input.trim()||busy} style={{background:input.trim()&&!busy?C.amber:"transparent",border:input.trim()&&!busy?"none":`1px solid ${C.bdL}`,borderRadius:10,padding:"9px 18px",cursor:"pointer",fontWeight:700,fontSize:13,color:input.trim()&&!busy?C.bg0:C.textM,fontFamily:"inherit",transition:"all .2s",flexShrink:0,display:"flex",alignItems:"center",gap:6}}>
@@ -485,7 +493,7 @@ function TaskCommentModal({task,me,team,onClose}){
             </div>
           )}
           {comments.map((c,idx)=>{
-            const user=team.find(m=>m.id===c.uid)||SEED_TEAM[0];
+            const user=team.find(m=>m.id===c.uid)||(team[0]||{initials:"?",color:C.bg4,name:"Unknown",surname:""});
             const isSelf=c.uid===me.id;
             const showDate=idx===0||(comments[idx-1].date!==c.date);
             return(
