@@ -283,7 +283,7 @@ function LoginScreen({team,onLogin}){
 /* ─── MENTION PARSER: render @name as colored highlight ─── */
 function parseMention(text,team){
   if(!text||!text.includes('@'))return text;
-  const parts=text.split(/(@[\w\u0E00-\u0E7Fก-๙]+)/g);
+  const parts=text.split(/(@[a-zA-Z0-9\u0E00-\u0E7F\s]{1,30})/g);
   return parts.map((p,i)=>{
     if(!p.startsWith('@'))return p;
     const name=p.slice(1);
@@ -313,7 +313,7 @@ function ChatView({proj,me,team,projects}){
     setInput(val);
     const cursor=e.target.selectionStart;
     const before=val.slice(0,cursor);
-    const m=before.match(/@([\w\u0E00-\u0E7Fก-๙]*)$/);
+    const m=before.match(/@([\w\u0E00-\u0E7F\s]{0,30})$/);
     setMentionQ(m?m[1]:null);
   };
 
@@ -321,7 +321,7 @@ function ChatView({proj,me,team,projects}){
     const cursor=inputRef.current.selectionStart;
     const before=input.slice(0,cursor);
     const after=input.slice(cursor);
-    const replaced=before.replace(/@([\w\u0E00-\u0E7Fก-๙]*)$/,`@${member.name} `);
+    const replaced=before.replace(/@([\w\u0E00-\u0E7F\s]{0,30})$/,`@${member.name} `);
     setInput(replaced+after);
     setMentionQ(null);
     setTimeout(()=>inputRef.current?.focus(),50);
@@ -440,14 +440,14 @@ function TaskCommentModal({task,me,team,onClose}){
     const val=e.target.value;setInput(val);
     const cursor=e.target.selectionStart;
     const before=val.slice(0,cursor);
-    const m=before.match(/@([\w\u0E00-\u0E7Fก-๙]*)$/);
+    const m=before.match(/@([\w\u0E00-\u0E7F\s]{0,30})$/);
     setMentionQ(m?m[1]:null);
   };
   const insertMention=(member)=>{
     const cursor=inputRef.current.selectionStart;
     const before=input.slice(0,cursor);
     const after=input.slice(cursor);
-    setInput(before.replace(/@([\w\u0E00-\u0E7Fก-๙]*)$/,`@${member.name} `)+after);
+    setInput(before.replace(/@([\w\u0E00-\u0E7F\s]{0,30})$/,`@${member.name} `)+after);
     setMentionQ(null);
     setTimeout(()=>inputRef.current?.focus(),50);
   };
@@ -568,6 +568,7 @@ function TasksView({me,team,toast,projects}){
   const del=(task)=>{window.DB.get('tasks').get(task._k).put({...task,_d:true});toast("ลบงานแล้ว");};
 
   return(
+  <React.Fragment>
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
       <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.bd}`,display:"flex",gap:8,alignItems:"center",flexShrink:0,background:C.bg1,flexWrap:"wrap"}}>
         <Sel value={fp} onChange={e=>setFp(e.target.value)} style={{width:165}}><option value="all">ทุกโปรเจกต์</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Sel>
@@ -632,6 +633,7 @@ function TasksView({me,team,toast,projects}){
       </div>
     </div>
     {commentTask&&<TaskCommentModal task={commentTask} me={me} team={team} onClose={()=>setCommentTask(null)}/>}
+  </React.Fragment>
   );
 }
 
