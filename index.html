@@ -34,7 +34,7 @@ select option{background:#131f33;color:#e2e8f0}
    🔑 ROOM KEY — ทีมทุกคนต้องใช้ key เดียวกัน
    เปลี่ยนได้ถ้าต้องการ room ส่วนตัวมากขึ้น
    ══════════════════════════════════════════ */
-const ROOM_KEY = 'rabbiz-teamhub-2026-v2';
+const ROOM_KEY = 'rabbiz-teamhub-2026-v3';
 
 window.DB = Gun([
   'https://gun-manhattan.herokuapp.com/gun',
@@ -61,10 +61,17 @@ const ROLES={
   viewer: {label:"ดูอย่างเดียว",color:C.textM,bg:C.bg4,    perms:["chat"]},
 };
 const SEED_PROJECTS=[
-  {id:"nara",    name:"NARA Project",      icon:"🏗",color:"#f59e0b",ts:1},
-  {id:"park",    name:"RABBiZPark BKK",    icon:"🏢",color:"#3b82f6",ts:2},
-  {id:"warehouse",name:"โกดัง สุวรรณภูมิ",icon:"🏭",color:"#10b981",ts:3},
-  {id:"box",     name:"RABBiZBox Factory", icon:"📦",color:"#8b5cf6",ts:4},
+  {id:"p01",name:"บางนา",             icon:"🏗",color:"#f59e0b",ts:1},
+  {id:"p02",name:"เมก้าบางนา",        icon:"🏢",color:"#3b82f6",ts:2},
+  {id:"p03",name:"อ่อนนุช-ลาดกะบัง", icon:"🏭",color:"#10b981",ts:3},
+  {id:"p04",name:"ไทยรามัญ",          icon:"🏠",color:"#8b5cf6",ts:4},
+  {id:"p05",name:"ตลาดไท",            icon:"🏪",color:"#ef4444",ts:5},
+  {id:"p06",name:"พหลโยธิน-วัดชมพู", icon:"🏨",color:"#06b6d4",ts:6},
+  {id:"p07",name:"บางปะอิน",          icon:"🏬",color:"#f97316",ts:7},
+  {id:"p08",name:"ราชพฤกษ์",          icon:"🌿",color:"#14b8a6",ts:8},
+  {id:"p09",name:"บรมราชชนนี",        icon:"🏰",color:"#6366f1",ts:9},
+  {id:"p10",name:"ปลายบาง",           icon:"🏡",color:"#ec4899",ts:10},
+  {id:"p11",name:"พระราม2",           icon:"🗼",color:"#84cc16",ts:11},
 ];
 const STATUS=[
   {id:"todo",      label:"รอดำเนินการ",color:C.textM},
@@ -87,21 +94,18 @@ const SEED_TEAM=[
   {id:6,name:"IMM", surname:"",role:"engineer",dept:"วิศวกร",initials:"IM", color:"#06b6d4",phone:"",active:true,pin:"1111"},
 ];
 const SEED_TASKS=[
-  {id:"t1",title:"ตรวจ Shop Drawing R1–R3",   project:"nara",      uid:1,priority:"high",  status:"todo",      deadline:"5 เม.ย. 69", desc:"ตรวจ R1–R3 พร้อม mark-up",ts:100001},
-  {id:"t2",title:"Inspection MEP Hotel Wing",  project:"nara",      uid:2,priority:"high",  status:"inprogress",deadline:"3 เม.ย. 69", desc:"MEP ชั้น 1–5",             ts:100002},
-  {id:"t3",title:"วางเหล็กฐานราก C2",         project:"nara",      uid:3,priority:"medium",status:"inprogress",deadline:"8 เม.ย. 69", desc:"ตามแบบ SD-C2-001",         ts:100003},
-  {id:"t4",title:"ซ่อมระบบไฟฟ้า P3",          project:"park",      uid:4,priority:"urgent",status:"inprogress",deadline:"วันนี้",     desc:"P3 ทั้งหมด 12 จุด",        ts:100004},
-  {id:"t5",title:"ส่งมอบ RABBiZBox Batch 12", project:"box",       uid:5,priority:"medium",status:"todo",      deadline:"20 เม.ย. 69",desc:"5 ยูนิต 20ft Standard",    ts:100005},
-  {id:"t6",title:"Load Test หลังคาโกดัง",     project:"warehouse", uid:6,priority:"medium",status:"review",    deadline:"10 เม.ย. 69",desc:"ทดสอบตาม EIT 1009",        ts:100006},
-  {id:"t7",title:"ตรวจรับ ichi cha Teahouse", project:"nara",      uid:7,priority:"low",   status:"done",      deadline:"28 มี.ค. 69",desc:"Completion certificate",   ts:100007},
+  {id:"t1",title:"สำรวจพื้นที่และวาง Layout",  project:"p01",uid:1,priority:"high",  status:"inprogress",deadline:"5 เม.ย. 69", desc:"สำรวจหน้างาน กำหนดขอบเขต",ts:100001},
+  {id:"t2",title:"ออกแบบผังโครงการ",            project:"p02",uid:2,priority:"high",  status:"todo",      deadline:"8 เม.ย. 69", desc:"Master Plan และผัง Site",  ts:100002},
+  {id:"t3",title:"ประมาณราคาวัสดุก่อสร้าง",    project:"p03",uid:3,priority:"medium",status:"todo",      deadline:"10 เม.ย. 69",desc:"BOQ วัสดุทั้งหมด",         ts:100003},
+  {id:"t4",title:"ตรวจสอบระบบไฟฟ้า",            project:"p04",uid:4,priority:"urgent",status:"inprogress",deadline:"วันนี้",     desc:"ตรวจ load และ panel board",ts:100004},
+  {id:"t5",title:"งานวางท่อประปา",              project:"p05",uid:5,priority:"medium",status:"todo",      deadline:"15 เม.ย. 69",desc:"ท่อ PVC ขนาด 4 นิ้ว",     ts:100005},
+  {id:"t6",title:"งานฐานรากและโครงสร้าง",       project:"p06",uid:6,priority:"high",  status:"review",    deadline:"12 เม.ย. 69",desc:"เทคอนกรีตฐานราก Block A",ts:100006},
+  {id:"t7",title:"ติดตั้งหลังคาเมทัลชีท",      project:"p07",uid:1,priority:"medium",status:"done",      deadline:"1 เม.ย. 69", desc:"Metasheet 800 ตรม.",       ts:100007},
 ];
 const SEED_MSGS=[
-  {proj:"nara",     uid:1,text:"สวัสดีทีมงานครับ เริ่มใช้ระบบ RABBiZ TeamHub กันได้เลย 🚀",                  time:"09:00",date:"2 เม.ย. 69",ts:200001},
-  {proj:"nara",     uid:2,text:"รับทราบครับ กำลังดู Shop Drawing R1–R3 อยู่ครับ",                             time:"09:05",date:"2 เม.ย. 69",ts:200002},
-  {proj:"nara",     uid:3,text:"MEP ชั้น 1 ตรวจเสร็จแล้ว กำลังทำชั้น 2 ครับ 💪",                             time:"09:10",date:"2 เม.ย. 69",ts:200003},
-  {proj:"park",     uid:4,text:"ระบบไฟฟ้า P3 กำลังแก้ไขอยู่ครับ คาดเสร็จวันนี้",                             time:"08:30",date:"2 เม.ย. 69",ts:200010},
-  {proj:"warehouse",uid:5,text:"อยู่ที่โกดังครับ รอ Load Test อุปกรณ์มาแล้ว",                                 time:"07:30",date:"2 เม.ย. 69",ts:200020},
-  {proj:"box",      uid:6,text:"Batch 12 เริ่มผลิตแล้วครับ ตามกำหนด",                                          time:"08:00",date:"2 เม.ย. 69",ts:200030},
+  {proj:"p01",uid:1,text:"สวัสดีทีมงานทุกคนครับ เริ่มใช้งาน RABBiZ TeamHub ได้เลยนะครับ 🚀",time:"08:00",date:"2 เม.ย. 69",ts:200001},
+  {proj:"p01",uid:2,text:"รับทราบครับ กำลังสำรวจพื้นที่บางนาอยู่ครับ ✅",                   time:"08:10",date:"2 เม.ย. 69",ts:200002},
+  {proj:"p06",uid:4,text:"พหลโยธิน-วัดชมพู — เทฐานรากเสร็จ 40% แล้วครับ 💪",              time:"09:00",date:"2 เม.ย. 69",ts:200010},
 ];
 
 /* ─── GUN HOOKS ─── */
