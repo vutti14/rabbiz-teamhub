@@ -558,14 +558,14 @@ function TasksView({me,team,toast,projects}){
   const [commentTask,setCommentTask]=useState(null); // task to show comments for
 
   const pts=tasks.filter(t=>(fp==="all"||t.project===fp)&&(fa==="all"||String(t.uid)===fa));
-  const move=(task,status)=>{window.DB.get('tasks').get(task._k).put({...task,status,ts:task.ts});toast("อัพเดทสถานะ ✓");};
+  const move=(task,status)=>{window.DB.get('tasks').get(task._k).put((({_k,...t})=>({...t,status,ts:task.ts}))(task));toast("อัพเดทสถานะ ✓");};
   const add=()=>{
     if(!newT?.title?.trim())return;
     const k='t_'+Date.now();
     window.DB.get('tasks').get(k).put({...newT,uid:parseInt(newT.uid),status:"todo",ts:Date.now(),created:new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"})});
     setNewT(null);toast("สร้างงานสำเร็จ ✓");
   };
-  const del=(task)=>{window.DB.get('tasks').get(task._k).put({...task,_d:true});toast("ลบงานแล้ว");};
+  const del=(task)=>{window.DB.get('tasks').get(task._k).put((({_k,...t})=>({...t,_d:true}))(task));toast("ลบงานแล้ว");};
 
   return(
   <React.Fragment>
@@ -667,7 +667,7 @@ function SubmitView({me,team,tasks,toast,projects}){
     window.DB.get('subs').set(report);
     if(sub.taskId&&sub.progress>=100){
       const task=tasks.find(t=>t._k===sub.taskId);
-      if(task)window.DB.get('tasks').get(task._k).put({...task,status:"review"});
+      if(task)window.DB.get('tasks').get(task._k).put((({_k,...t})=>({...t,status:"review"}))(task));
     }
     setSub({title:"",project:"nara",taskId:"",progress:50,detail:"",photos:[]});
     setBusy(false);toast("ส่งรายงานสำเร็จ ✓");
@@ -812,8 +812,16 @@ function TeamView({team,tasks,subs,toast,projects}){
   const [confDelP,setConfDelP]=useState(null);
   const [newP,setNewP]=useState({name:"",icon:"🏗",color:"#f59e0b"});
   const ICONS=["🏗","🏢","🏭","🏠","🏪","🏨","🏬","🏦","🏡","🏰","🌆","🗼","📦","🔧","⚙️","🌿","🛒","🎯","🏆","🔑"];
-  const saveP=(p)=>window.DB.get('projects').get(p.id||p._k).put({...p,_d:undefined});
-  const delP=(p)=>window.DB.get('projects').get(p._k||p.id).put({...p,_d:true});
+  const saveP=(p)=>{
+    const {_k,...data}=p;
+    const key=p.id||_k;
+    window.DB.get('projects').get(key).put({...data,_d:null});
+  };
+  const delP=(p)=>{
+    const {_k,...data}=p;
+    const key=p.id||_k;
+    window.DB.get('projects').get(key).put({...data,_d:true});
+  };
   const addP=()=>{
     if(!newP.name.trim()){toast("กรุณาใส่ชื่อโปรเจกต์",true);return;}
     const id='p_'+Date.now();
@@ -822,7 +830,7 @@ function TeamView({team,tasks,subs,toast,projects}){
   };
   const ALLP=[["chat","💬 สนทนา"],["tasks","📋 สั่งงาน"],["submit","📤 ส่งงาน"],["ai","🤖 AI"],["pdf","📄 PDF"],["team","👥 ทีม"]];
 
-  const saveM=(m)=>window.DB.get('team').get(String(m.id)).put({...m});
+  const saveM=(m)=>{const {_k,...data}=m;window.DB.get('team').get(String(m.id)).put(data);};
   const delM=(id)=>window.DB.get('team').get(String(id)).put({_d:true,id});
   const toggleM=(m)=>saveM({...m,active:!m.active});
   const filt=team.filter(m=>m&&!m._d&&(frole==="all"||m.role===frole));
