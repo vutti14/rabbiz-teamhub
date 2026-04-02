@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RABBiZ TeamHub</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:'Sarabun',sans-serif;background:#090e1a;color:#e2e8f0;font-size:14px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2d3f5a;border-radius:9px}
+input,textarea,select,button{font-family:'Sarabun',sans-serif}
+input::placeholder,textarea::placeholder{color:#3d5068}
+select option{background:#131f33;color:#e2e8f0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* ══════════════════════════════════════════
+   🔑 ROOM KEY — ทีมทุกคนต้องใช้ key เดียวกัน
+   เปลี่ยนได้ถ้าต้องการ room ส่วนตัวมากขึ้น
+   ══════════════════════════════════════════ */
+const ROOM_KEY = 'rabbiz-teamhub-2026-v1';
+
+window.DB = Gun([
+  'https://gun-manhattan.herokuapp.com/gun',
+  'https://peer.wallie.io/gun',
+  'https://gun-us.herokuapp.com/gun',
+]).get(ROOM_KEY);
+</script>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ─── COLORS ─── */
+const C={
+  bg0:"#090e1a",bg1:"#0f1a2e",bg2:"#131f33",bg3:"#1a2840",bg4:"#22334f",bg5:"#2d3f5a",
+  amber:"#f59e0b",amberBg:"rgba(245,158,11,.1)",text:"#e2e8f0",textS:"#94a3b8",textM:"#64748b",
+  bd:"#1a2840",bdL:"#22334f",green:"#10b981",greenBg:"rgba(16,185,129,.12)",
+  red:"#ef4444",redBg:"rgba(239,68,68,.12)",blue:"#3b82f6",blueBg:"rgba(59,130,246,.12)",
+  purple:"#8b5cf6",purpleBg:"rgba(139,92,246,.12)",orange:"#f97316",cyan:"#06b6d4",
+};
+const ROLES={
+  admin:  {label:"Admin",      color:C.amber, bg:C.amberBg, perms:["chat","tasks","submit","ai","team","pdf"]},
+  manager:{label:"Manager",    color:C.purple,bg:C.purpleBg,perms:["chat","tasks","submit","ai","pdf"]},
+  engineer:{label:"วิศวกร",   color:C.blue,  bg:C.blueBg,  perms:["chat","tasks","submit","ai","pdf"]},
+  foreman:{label:"หัวหน้าช่าง",color:C.red,  bg:C.redBg,   perms:["chat","tasks","submit"]},
+  viewer: {label:"ดูอย่างเดียว",color:C.textM,bg:C.bg4,    perms:["chat"]},
+};
+const SEED_PROJECTS=[
+  {id:"nara",    name:"NARA Project",      icon:"🏗",color:"#f59e0b",ts:1},
+  {id:"park",    name:"RABBiZPark BKK",    icon:"🏢",color:"#3b82f6",ts:2},
+  {id:"warehouse",name:"โกดัง สุวรรณภูมิ",icon:"🏭",color:"#10b981",ts:3},
+  {id:"box",     name:"RABBiZBox Factory", icon:"📦",color:"#8b5cf6",ts:4},
+];
+const STATUS=[
+  {id:"todo",      label:"รอดำเนินการ",color:C.textM},
+  {id:"inprogress",label:"กำลังทำ",   color:C.blue},
+  {id:"review",    label:"รอตรวจสอบ", color:C.amber},
+  {id:"done",      label:"เสร็จแล้ว", color:C.green},
+];
+const PRIO={
+  urgent:{label:"ด่วนมาก",color:C.red,   bg:C.redBg},
+  high:  {label:"สูง",    color:C.orange,bg:"rgba(249,115,22,.12)"},
+  medium:{label:"กลาง",   color:C.amber, bg:C.amberBg},
+  low:   {label:"ต่ำ",    color:C.green, bg:C.greenBg},
+};
+const SEED_TEAM=[
+  {id:1, name:"อาร์ต",  surname:"",        role:"admin",   dept:"ผู้บริหาร",     initials:"CEO",color:"#f59e0b",phone:"081-000-0001",active:true,pin:"1111"},
+  {id:2, name:"ธนกฤต", surname:"วงศ์ไทย",  role:"engineer",dept:"โครงสร้าง",     initials:"ธก", color:"#3b82f6",phone:"081-000-0002",active:true,pin:"2222"},
+  {id:3, name:"สมชาย", surname:"พัฒนา",    role:"engineer",dept:"ไฟฟ้า",         initials:"สช", color:"#10b981",phone:"081-000-0003",active:true,pin:"3333"},
+  {id:4, name:"วิภา",  surname:"ศรีสุข",   role:"manager", dept:"บริหารโครงการ",  initials:"วภ", color:"#8b5cf6",phone:"081-000-0004",active:true,pin:"4444"},
+  {id:5, name:"ประทีป",surname:"แสงทอง",  role:"foreman", dept:"หัวหน้าช่าง",    initials:"ปท", color:"#ef4444",phone:"081-000-0005",active:true,pin:"5555"},
+  {id:6, name:"มาลี",  surname:"รักดี",    role:"engineer",dept:"MEP",            initials:"มล", color:"#06b6d4",phone:"081-000-0006",active:true,pin:"6666"},
+];
+const SEED_TASKS=[
+  {id:"t1",title:"ตรวจ Shop Drawing R1–R3",    project:"nara",      uid:2,priority:"high",  status:"todo",      deadline:"2 เม.ย. 69",   desc:"ตรวจ R1–R3 พร้อม mark-up กลับ",ts:100001},
+  {id:"t2",title:"Inspection MEP Hotel Wing",   project:"nara",      uid:6,priority:"high",  status:"inprogress",deadline:"1 เม.ย. 69",   desc:"MEP ชั้น 1–5 Hotel Wing",       ts:100002},
+  {id:"t3",title:"วางเหล็กฐานราก C2",          project:"nara",      uid:5,priority:"medium",status:"inprogress",deadline:"5 เม.ย. 69",   desc:"ตามแบบ SD-C2-001",              ts:100003},
+  {id:"t4",title:"ซ่อมระบบไฟฟ้า P3",           project:"park",      uid:3,priority:"urgent",status:"inprogress",deadline:"วันนี้",       desc:"P3 ทั้งหมด 12 จุด",             ts:100004},
+  {id:"t5",title:"ส่งมอบ RABBiZBox Batch 12",   project:"box",       uid:4,priority:"medium",status:"todo",      deadline:"20 เม.ย. 69",  desc:"5 ยูนิต 20ft Standard",         ts:100005},
+  {id:"t6",title:"Load Test หลังคาโกดัง",       project:"warehouse", uid:2,priority:"medium",status:"review",    deadline:"10 เม.ย. 69",  desc:"ทดสอบตาม EIT 1009",             ts:100006},
+  {id:"t7",title:"ตรวจรับ ichi cha Teahouse",  project:"nara",      uid:4,priority:"low",   status:"done",      deadline:"28 มี.ค. 69",  desc:"Completion certificate",        ts:100007},
+];
+const SEED_MSGS=[
+  {proj:"nara",uid:4,text:"อัพเดท NARA: งานฐานรากอาคาร C1 เสร็จ 70% แล้วครับ ทุกอย่างตามแผน 💪",time:"09:15",date:"31 มี.ค. 69",ts:200001},
+  {proj:"nara",uid:2,text:"ตรวจ Shop Drawing R1 แล้วครับ มีแก้เล็กน้อยชั้น 2 จะส่ง mark-up คืนนี้",time:"10:30",date:"31 มี.ค. 69",ts:200002},
+  {proj:"nara",uid:5,text:"เหล็ก DB16 มาครบ 100% เริ่มวางพรุ่งนี้ 07:00 น. ✅",time:"11:45",date:"31 มี.ค. 69",ts:200003},
+  {proj:"nara",uid:6,text:"แบบ MEP ชั้น 2–4 ส่ง revision แล้วนะคะ มีแก้ Chiller B1 ด้วย",time:"14:05",date:"31 มี.ค. 69",ts:200004},
+  {proj:"park",uid:4,text:"งานซ่อม Zone B เสร็จแล้วครับ ผู้เช่าเข้าได้เลย",time:"08:00",date:"31 มี.ค. 69",ts:200010},
+  {proj:"park",uid:3,text:"สปริงเกอร์ Zone A ผ่านทุกจุดครับ ✅",time:"11:00",date:"31 มี.ค. 69",ts:200011},
+  {proj:"warehouse",uid:2,text:"EIA ผ่านแล้วครับ เริ่มก่อสร้างได้ทันที 🎉",time:"07:30",date:"31 มี.ค. 69",ts:200020},
+  {proj:"box",uid:4,text:"Order ใหม่ 5 ยูนิต 20ft ต้องเสร็จใน 3 สัปดาห์ครับ",time:"08:00",date:"31 มี.ค. 69",ts:200030},
+];
+
+/* ─── GUN HOOKS ─── */
+function useGunSet(path){
+  const [items,setItems]=useState([]);
+  const gen=useRef(0);
+  useEffect(()=>{
+    const myGen=++gen.current;
+    const store={};
+    window.DB.get(path).map().on((data,key)=>{
+      if(gen.current!==myGen||!data||key==='_'||typeof data!=='object')return;
+      if(data._d)delete store[key];
+      else store[key]={...data,_k:key};
+      setItems(Object.values(store).filter(x=>x&&!x._d).sort((a,b)=>(a.ts||0)-(b.ts||0)));
+    });
+  },[path]);
+  return items;
+}
+
+function useGunTeam(){
+  const [team,setTeam]=useState(SEED_TEAM);
+  const store=useRef({});
+  useEffect(()=>{
+    window.DB.get('team').map().on((data,key)=>{
+      if(!data||key==='_'||typeof data!=='object')return;
+      store.current[key]={...data};
+      const arr=Object.values(store.current).filter(x=>x&&x.id).sort((a,b)=>a.id-b.id);
+      if(arr.length>0)setTeam(arr);
+    });
+  },[]);
+  return team;
+}
+
+function useGunProjects(){
+  const [projects,setProjects]=useState(SEED_PROJECTS);
+  const store=useRef({});
+  useEffect(()=>{
+    window.DB.get('projects').map().on((data,key)=>{
+      if(!data||key==='_'||typeof data!=='object')return;
+      if(data._d)delete store.current[key];
+      else store.current[key]={...data,_k:key};
+      const arr=Object.values(store.current).filter(x=>x&&x.id&&!x._d).sort((a,b)=>(a.ts||0)-(b.ts||0));
+      if(arr.length>0)setProjects(arr);
+    });
+  },[]);
+  return projects;
+}
+
+/* ─── SEED DATA ─── */
+function seedIfNeeded(){
+  const key='rz_seeded_'+ROOM_KEY;
+  if(localStorage.getItem(key))return;
+  SEED_TEAM.forEach(m=>window.DB.get('team').get(String(m.id)).put({...m}));
+  SEED_TASKS.forEach(t=>window.DB.get('tasks').get(t.id).put({...t}));
+  SEED_PROJECTS.forEach(p=>window.DB.get('projects').get(p.id).put({...p}));
+  SEED_MSGS.forEach(m=>{const {proj,...msg}=m;window.DB.get('msgs').get(proj).set({...msg});});
+  localStorage.setItem(key,'1');
+}
+
+/* ─── PDF ─── */
+function genPDF(r,projects=SEED_PROJECTS){
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const W=210,M=15,CW=W-M*2;let y=M;
+  const proj=projects.find(p=>p.id===r.project)||{name:r.project};
+  const sub=r.submitter||{};const rd=ROLES[sub.role]||{label:"-"};
+  doc.setFillColor(9,14,26);doc.rect(0,0,W,30,"F");doc.setFillColor(20,32,51);doc.rect(0,24,W,6,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(18);doc.setTextColor(245,158,11);doc.text("RABBiZ",M,13);
+  doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(148,163,184);doc.text("TeamHub — Work Report",M,19);
+  doc.setTextColor(100,116,139);doc.setFontSize(8);doc.text(new Date().toLocaleString("th-TH"),W-M,19,"right");y=36;
+  doc.setFillColor(20,32,51);doc.roundedRect(M,y,CW,16,3,3,"F");
+  doc.setFontSize(8);doc.setFont("helvetica","bold");doc.setTextColor(100,116,139);doc.text(proj.name.toUpperCase(),M+5,y+6);
+  doc.setFontSize(13);doc.setTextColor(226,232,240);doc.text(r.title||"รายงาน",M+5,y+13);y+=22;
+  const pct=Math.min(100,Math.max(0,r.progress||0));const pc=pct>=100?[16,185,129]:pct>=50?[245,158,11]:[239,68,68];
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(100,116,139);doc.text("ความคืบหน้า",M,y);
+  doc.setFont("helvetica","bold");doc.setTextColor(...pc);doc.text(`${pct}%`,W-M,y,"right");y+=4;
+  doc.setFillColor(26,40,64);doc.roundedRect(M,y,CW,4,2,2,"F");
+  if(pct>0){doc.setFillColor(...pc);doc.roundedRect(M,y,CW*(pct/100),4,2,2,"F");}y+=10;
+  doc.autoTable({startY:y,head:[["ข้อมูล","รายละเอียด"]],body:[
+    ["ผู้ส่งงาน",`${sub.name||"-"} ${sub.surname||""}`.trim()],
+    ["แผนก",`${sub.dept||"-"} (${rd.label})`],["โทร",sub.phone||"-"],
+    ["โปรเจกต์",proj.name],["สถานะ",`${pct}%`],["วันที่",r.time||"-"],
+  ],margin:{left:M,right:M},styles:{font:"helvetica",fontSize:8.5,textColor:[200,210,225],fillColor:[15,26,46],lineColor:[26,40,64],lineWidth:.3},headStyles:{fillColor:[20,32,51],textColor:[245,158,11],fontStyle:"bold",fontSize:8},alternateRowStyles:{fillColor:[13,22,40]},columnStyles:{0:{cellWidth:40,fontStyle:"bold",textColor:[100,116,139]}}});
+  y=doc.lastAutoTable.finalY+8;
+  if(r.detail){doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(245,158,11);doc.text("รายละเอียด",M,y);y+=5;doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(200,210,225);const lines=doc.splitTextToSize(r.detail,CW);doc.text(lines,M,y);y+=lines.length*4.5+6;}
+  if(r.photos&&r.photos.length>0){if(y>220){doc.addPage();y=20;}doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(245,158,11);doc.text(`รูปภาพ (${r.photos.length})`,M,y);y+=6;const iw=57,ih=44,gap=5.5;let cx=M;r.photos.forEach((src,i)=>{if(cx+iw>W-M){cx=M;y+=ih+8;}if(y+ih>285){doc.addPage();y=20;cx=M;}try{doc.addImage(src,src.startsWith("data:image/png")?"PNG":"JPEG",cx,y,iw,ih);doc.setDrawColor(26,40,64);doc.rect(cx,y,iw,ih,"S");doc.setFont("helvetica","normal");doc.setFontSize(6.5);doc.setTextColor(100,116,139);doc.text(`${i+1}`,cx+2,y+ih+3.5);}catch(e){}cx+=iw+gap;});if(cx>M)y+=ih+10;}
+  const n=doc.internal.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFillColor(9,14,26);doc.rect(0,285,W,12,"F");doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(64,90,116);doc.text("RABBiZ Group — Confidential",M,291);doc.text(`หน้า ${i}/${n}`,W-M,291,"right");}
+  doc.save(`RABBiZ_Report_${Date.now()}.pdf`);
+}
+
+/* ─── SMALL UI ─── */
+const Av=({initials,color,size=36,dot=null})=>(
+  <div style={{position:"relative",flexShrink:0}}>
+    <div style={{width:size,height:size,borderRadius:"50%",background:color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.28,fontWeight:700,color:"#fff"}}>{initials}</div>
+    {dot&&<div style={{position:"absolute",bottom:0,right:0,width:size*.28,height:size*.28,borderRadius:"50%",background:dot==="on"?C.green:C.textM,border:`2px solid ${C.bg0}`}}/>}
+  </div>
+);
+const Chip=({label,color,bg})=><span style={{fontSize:11,fontWeight:700,color,background:bg,padding:"2px 9px",borderRadius:99,whiteSpace:"nowrap"}}>{label}</span>;
+const Inp=({style={},...p})=><input style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none",width:"100%",...style}} onFocus={e=>e.target.style.borderColor=C.amber+"70"} onBlur={e=>e.target.style.borderColor=C.bdL} {...p}/>;
+const Sel=({style={},...p})=><select style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none",width:"100%",...style}} {...p}/>;
+const TA=({style={},...p})=><textarea style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none",width:"100%",resize:"vertical",minHeight:72,...style}} onFocus={e=>e.target.style.borderColor=C.amber+"70"} onBlur={e=>e.target.style.borderColor=C.bdL} {...p}/>;
+const Card=({children,style={}})=><div style={{background:C.bg2,border:`1px solid ${C.bd}`,borderRadius:12,...style}}>{children}</div>;
+const Lbl=({children})=><div style={{fontSize:11,fontWeight:600,color:C.textM,letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:5}}>{children}</div>;
+const PBtn=({children,onClick,disabled,style={}})=><button onClick={onClick} disabled={disabled} style={{background:disabled?C.bg4:C.amber,color:disabled?C.textM:C.bg0,border:"none",borderRadius:9,padding:"8px 18px",fontWeight:700,fontSize:13,cursor:disabled?"not-allowed":"pointer",opacity:disabled?.6:1,transition:"all .15s",...style}}>{children}</button>;
+const GBtn=({children,onClick,style={}})=><button onClick={onClick} style={{background:"transparent",border:`1px solid ${C.bdL}`,borderRadius:9,padding:"8px 16px",color:C.textS,fontSize:13,cursor:"pointer",...style}}>{children}</button>;
+const DBtn=({children,onClick})=><button onClick={onClick} style={{background:C.redBg,border:`1px solid rgba(239,68,68,.25)`,borderRadius:9,padding:"6px 14px",color:C.red,fontSize:12,cursor:"pointer"}}>{children}</button>;
+const Spin=()=><div style={{width:16,height:16,border:`2px solid ${C.bg4}`,borderTopColor:C.amber,borderRadius:"50%",animation:"spin .7s linear infinite",flexShrink:0}}/>;
+const Toast=({n})=>n?<div style={{position:"fixed",top:18,right:18,zIndex:9999,background:n.err?C.red:C.green,color:"#fff",padding:"10px 20px",borderRadius:10,fontWeight:600,fontSize:13,boxShadow:"0 8px 32px rgba(0,0,0,.6)",animation:"fadeUp .2s ease"}}>{n.err?"⚠ ":"✓ "}{n.msg}</div>:null;
+
+/* ════════════════════════════════
+   LOGIN
+════════════════════════════════ */
+function LoginScreen({team,onLogin}){
+  const [sel,setSel]=useState(null);
+  const [pin,setPin]=useState("");
+  const [err,setErr]=useState("");
+  const pinRef=useRef();
+
+  if(!sel)return(
+    <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`radial-gradient(ellipse at 20% 20%, rgba(245,158,11,.06) 0%,transparent 60%), ${C.bg0}`,padding:20,overflow:"auto"}}>
+      <div style={{width:"100%",maxWidth:440,animation:"fadeUp .4s ease"}}>
+        <div style={{textAlign:"center",marginBottom:30}}>
+          <div style={{width:56,height:56,borderRadius:16,background:C.amber,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:C.bg0,fontSize:20,margin:"0 auto 14px",boxShadow:"0 8px 28px rgba(245,158,11,.35)"}}>RZ</div>
+          <div style={{fontSize:22,fontWeight:700,marginBottom:4}}>RABBiZ TeamHub</div>
+          <div style={{fontSize:13,color:C.textM}}>ระบบสื่อสารทีมวิศวกร &amp; ก่อสร้าง</div>
+          <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:6,fontSize:11,color:C.green,background:C.greenBg,padding:"3px 12px",borderRadius:99,border:`1px solid rgba(16,185,129,.2)`}}>
+            <span style={{width:6,height:6,borderRadius:"50%",background:C.green,display:"inline-block",animation:"pulse 2s infinite"}}/>
+            Real-time sync พร้อมใช้งาน
+          </div>
+        </div>
+        <div style={{fontSize:11,fontWeight:700,color:C.textM,textAlign:"center",marginBottom:12,letterSpacing:"0.05em",textTransform:"uppercase"}}>เลือกสมาชิกของคุณ</div>
+        <div style={{display:"flex",flexDirection:"column",gap:7}}>
+          {team.filter(m=>m.active).map(m=>{
+            const rd=ROLES[m.role]||ROLES.viewer;
+            return(
+              <div key={m.id} onClick={()=>{setSel(m);setPin("");setErr("");setTimeout(()=>pinRef.current?.focus(),80);}}
+                style={{background:C.bg2,border:`1px solid ${C.bd}`,borderRadius:12,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .15s"}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amber+"50";e.currentTarget.style.background=C.bg3;}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bd;e.currentTarget.style.background=C.bg2;}}>
+                <Av initials={m.initials} color={m.color} size={44} dot="on"/>
+                <div style={{flex:1}}><div style={{fontWeight:600,fontSize:14}}>{m.name} {m.surname}</div><div style={{fontSize:12,color:C.textM,marginTop:1}}>{m.dept}</div></div>
+                <Chip label={rd.label} color={rd.color} bg={rd.bg}/>
+                <span style={{color:C.textM,fontSize:18}}>›</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{textAlign:"center",marginTop:18,fontSize:11,color:C.textM}}>RABBiZ Group · TeamHub v2.0</div>
+      </div>
+    </div>
+  );
+
+  const submit=()=>{
+    if(sel.pin&&pin!==sel.pin){setErr("PIN ไม่ถูกต้อง กรุณาลองใหม่");setPin("");return;}
+    onLogin(sel);
+  };
+  return(
+    <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg0,padding:20}}>
+      <div style={{width:"100%",maxWidth:340,animation:"fadeUp .25s ease"}}>
+        <button onClick={()=>setSel(null)} style={{background:"transparent",border:"none",color:C.textM,fontSize:13,cursor:"pointer",marginBottom:14,display:"flex",alignItems:"center",gap:5,padding:0}}>‹ เปลี่ยนสมาชิก</button>
+        <Card style={{padding:28,textAlign:"center"}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:12}}><Av initials={sel.initials} color={sel.color} size={60} dot="on"/></div>
+          <div style={{fontSize:16,fontWeight:700,marginBottom:3}}>{sel.name} {sel.surname}</div>
+          <div style={{fontSize:12,color:C.textM,marginBottom:22}}>{sel.dept}</div>
+          <Lbl>PIN เข้าระบบ</Lbl>
+          <input ref={pinRef} type="password" value={pin} maxLength={4} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}
+            style={{background:C.bg3,border:`2px solid ${err?C.red:pin.length===4?C.amber:C.bdL}`,borderRadius:10,padding:"12px",color:C.text,fontSize:24,outline:"none",width:"100%",textAlign:"center",letterSpacing:"0.7em",transition:"border-color .15s"}}/>
+          {err&&<div style={{color:C.red,fontSize:12,marginTop:6}}>{err}</div>}
+          <PBtn onClick={submit} disabled={!pin} style={{marginTop:14,width:"100%",padding:"12px",fontSize:14}}>เข้าสู่ระบบ →</PBtn>
+          <div style={{fontSize:11,color:C.textM,marginTop:10}}>PIN เริ่มต้น: 1111 / 2222 / 3333 / 4444 / 5555 / 6666</div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ─── MENTION PARSER: render @name as colored highlight ─── */
+function parseMention(text,team){
+  if(!text||!text.includes('@'))return text;
+  const parts=text.split(/(@[\w\u0E00-\u0E7Fก-๙]+)/g);
+  return parts.map((p,i)=>{
+    if(!p.startsWith('@'))return p;
+    const name=p.slice(1);
+    const m=team.find(x=>x.name===name||`${x.name}${x.surname}`===name||(x.name+' '+x.surname).trim()===name);
+    if(!m)return p;
+    return<span key={i} style={{background:`${m.color}25`,color:m.color,borderRadius:5,padding:"0 4px",fontWeight:600}}>{p}</span>;
+  });
+}
+
+/* ════════════════════════════════
+   CHAT
+════════════════════════════════ */
+function ChatView({proj,me,team,projects}){
+  const msgs=useGunSet(`msgs/${proj}`);
+  const [input,setInput]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [mentionQ,setMentionQ]=useState(null); // null | string
+  const botRef=useRef();
+  const inputRef=useRef();
+  const pD=projects.find(p=>p.id===proj);
+
+  useEffect(()=>{botRef.current?.scrollIntoView({behavior:"smooth"});},[msgs.length,proj]);
+
+  // Detect @ as user types
+  const handleInput=(e)=>{
+    const val=e.target.value;
+    setInput(val);
+    const cursor=e.target.selectionStart;
+    const before=val.slice(0,cursor);
+    const m=before.match(/@([\w\u0E00-\u0E7Fก-๙]*)$/);
+    setMentionQ(m?m[1]:null);
+  };
+
+  const insertMention=(member)=>{
+    const cursor=inputRef.current.selectionStart;
+    const before=input.slice(0,cursor);
+    const after=input.slice(cursor);
+    const replaced=before.replace(/@([\w\u0E00-\u0E7Fก-๙]*)$/,`@${member.name} `);
+    setInput(replaced+after);
+    setMentionQ(null);
+    setTimeout(()=>inputRef.current?.focus(),50);
+  };
+
+  const mentionList=mentionQ!==null
+    ?team.filter(m=>m.active&&!m._d&&m.name.includes(mentionQ))
+    :[];
+
+  const send=async()=>{
+    if(!input.trim()||busy)return;
+    const txt=input.trim();setInput("");setBusy(true);setMentionQ(null);
+    window.DB.get('msgs').get(proj).set({
+      uid:me.id,text:txt,
+      time:new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}),
+      date:new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}),
+      ts:Date.now()
+    });
+    setTimeout(()=>setBusy(false),300);
+  };
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Header */}
+      <div style={{padding:"10px 18px",background:C.bg1,borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+        <span style={{fontSize:20}}>{pD?.icon}</span>
+        <div><div style={{fontWeight:600,fontSize:14}}>{pD?.name}</div><div style={{fontSize:11,color:C.textM}}>{msgs.length} ข้อความ · {team.filter(m=>m.active&&!m._d).length} คน online</div></div>
+        <div style={{marginLeft:"auto",display:"flex"}}>{team.filter(m=>m.active&&!m._d).slice(0,6).map((m,i)=><div key={m.id} title={m.name} style={{width:24,height:24,borderRadius:"50%",background:m.color,border:`2px solid ${C.bg1}`,marginLeft:i?-7:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:7.5,fontWeight:700,color:"#fff",zIndex:10-i,position:"relative"}}>{m.initials}</div>)}</div>
+      </div>
+
+      {/* Messages */}
+      <div style={{flex:1,overflow:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:2}}>
+        {msgs.map((msg,idx)=>{
+          const user=team.find(m=>m.id===msg.uid)||SEED_TEAM[0];
+          const isSelf=msg.uid===me.id;
+          const showDate=idx===0||(msgs[idx-1].date!==msg.date);
+          const isMentioned=msg.text&&msg.text.includes(`@${me.name}`);
+          return(
+            <React.Fragment key={msg._k||idx}>
+              {showDate&&<div style={{textAlign:"center",margin:"10px 0 4px"}}><span style={{fontSize:10,color:C.textM,background:C.bg3,padding:"3px 12px",borderRadius:99}}>{msg.date}</span></div>}
+              <div style={{display:"flex",flexDirection:isSelf?"row-reverse":"row",gap:9,marginBottom:6,alignItems:"flex-end"}}>
+                {!isSelf&&<Av initials={user.initials} color={user.color} size={30}/>}
+                <div style={{maxWidth:"70%"}}>
+                  {!isSelf&&<div style={{fontSize:10.5,color:C.textM,marginBottom:3,paddingLeft:2}}>{user.name} {user.surname} · {user.dept}</div>}
+                  <div style={{background:isSelf?C.amber:isMentioned?"rgba(245,158,11,.12)":C.bg3,color:isSelf?C.bg0:C.text,borderRadius:isSelf?"14px 3px 14px 14px":"3px 14px 14px 14px",padding:"9px 13px",lineHeight:1.6,fontSize:13.5,wordBreak:"break-word",border:isMentioned&&!isSelf?`1px solid ${C.amber}40`:"1px solid transparent"}}>
+                    {parseMention(msg.text,team)}
+                  </div>
+                  <div style={{fontSize:10,color:C.textM,marginTop:3,textAlign:isSelf?"right":"left"}}>{msg.time}{isMentioned&&!isSelf&&<span style={{marginLeft:5,color:C.amber}}>· mention คุณ</span>}</div>
+                </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
+        {msgs.length===0&&<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:C.textM,fontSize:13,flexDirection:"column",gap:8,paddingTop:60}}><span style={{fontSize:32}}>💬</span>ยังไม่มีข้อความ เริ่มสนทนาได้เลยครับ</div>}
+        <div ref={botRef}/>
+      </div>
+
+      {/* @mention dropdown */}
+      {mentionList.length>0&&(
+        <div style={{position:"absolute",bottom:68,left:80,right:20,zIndex:50,background:C.bg2,border:`1px solid ${C.amber}50`,borderRadius:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.5)",maxHeight:180,overflowY:"auto"}}>
+          <div style={{padding:"6px 12px",fontSize:10,fontWeight:700,color:C.amber,borderBottom:`1px solid ${C.bd}`,textTransform:"uppercase",letterSpacing:"0.05em"}}>เลือกสมาชิก</div>
+          {mentionList.map(m=>(
+            <div key={m.id} onClick={()=>insertMention(m)} style={{padding:"8px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background=C.bg3}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <Av initials={m.initials} color={m.color} size={28}/>
+              <div><div style={{fontSize:13,fontWeight:600}}>{m.name} {m.surname}</div><div style={{fontSize:11,color:C.textM}}>{m.dept}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input bar */}
+      <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bd}`,display:"flex",gap:8,background:C.bg1,flexShrink:0,alignItems:"center",position:"relative"}}>
+        <Av initials={me.initials} color={me.color} size={30}/>
+        <div style={{flex:1,position:"relative"}}>
+          <input ref={inputRef} value={input} onChange={handleInput}
+            onKeyDown={e=>{
+              if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(mentionList.length>0)insertMention(mentionList[0]);else send();}
+              if(e.key==="Escape")setMentionQ(null);
+            }}
+            placeholder={`ส่งข้อความ... พิมพ์ @ เพื่อ mention สมาชิก (Enter)`}
+            style={{width:"100%",background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:10,padding:"9px 14px",color:C.text,fontSize:13.5,outline:"none",fontFamily:"inherit"}}/>
+        </div>
+        <button onClick={send} disabled={!input.trim()||busy} style={{background:input.trim()&&!busy?C.amber:"transparent",border:input.trim()&&!busy?"none":`1px solid ${C.bdL}`,borderRadius:10,padding:"9px 18px",cursor:"pointer",fontWeight:700,fontSize:13,color:input.trim()&&!busy?C.bg0:C.textM,fontFamily:"inherit",transition:"all .2s",flexShrink:0,display:"flex",alignItems:"center",gap:6}}>
+          {busy?<Spin/>:"ส่ง ›"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   TASK COMMENT MODAL
+════════════════════════════════ */
+function TaskCommentModal({task,me,team,onClose}){
+  const comments=useGunSet(`comments/${task._k||task.id}`);
+  const [input,setInput]=useState("");
+  const [busy,setBusy]=useState(false);
+  const botRef=useRef();
+  const inputRef=useRef();
+  const [mentionQ,setMentionQ]=useState(null);
+  const asn=team.find(m=>m.id===task.uid)||team[0];
+  const pd=PRIO[task.priority]||PRIO.medium;
+
+  useEffect(()=>{botRef.current?.scrollIntoView({behavior:"smooth"});},[comments.length]);
+  useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),100);},[]);
+
+  const handleInput=(e)=>{
+    const val=e.target.value;setInput(val);
+    const cursor=e.target.selectionStart;
+    const before=val.slice(0,cursor);
+    const m=before.match(/@([\w\u0E00-\u0E7Fก-๙]*)$/);
+    setMentionQ(m?m[1]:null);
+  };
+  const insertMention=(member)=>{
+    const cursor=inputRef.current.selectionStart;
+    const before=input.slice(0,cursor);
+    const after=input.slice(cursor);
+    setInput(before.replace(/@([\w\u0E00-\u0E7Fก-๙]*)$/,`@${member.name} `)+after);
+    setMentionQ(null);
+    setTimeout(()=>inputRef.current?.focus(),50);
+  };
+  const mentionList=mentionQ!==null?team.filter(m=>m.active&&!m._d&&m.name.includes(mentionQ)):[];
+
+  const send=()=>{
+    if(!input.trim()||busy)return;
+    setBusy(true);
+    window.DB.get('comments').get(task._k||task.id).set({
+      uid:me.id,text:input.trim(),
+      time:new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}),
+      date:new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}),
+      ts:Date.now()
+    });
+    setInput("");setMentionQ(null);setTimeout(()=>setBusy(false),300);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.65)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"flex-end"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{width:420,height:"100%",background:C.bg1,borderLeft:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",animation:"slideInRight .2s ease"}}>
+        {/* Header */}
+        <div style={{padding:"16px 18px",borderBottom:`1px solid ${C.bd}`,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <div style={{flex:1,fontWeight:700,fontSize:15,lineHeight:1.3}}>{task.title}</div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:C.textM,fontSize:20,cursor:"pointer",lineHeight:1,padding:"0 4px"}}>✕</button>
+          </div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+            <Chip label={pd.label} color={pd.color} bg={pd.bg}/>
+            {asn&&<div style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:C.textS}}><Av initials={asn.initials} color={asn.color} size={20}/>{asn.name}</div>}
+            <span style={{fontSize:11,color:C.textM}}>📅 {task.deadline}</span>
+          </div>
+          {task.desc&&<div style={{marginTop:10,fontSize:12.5,color:C.textS,lineHeight:1.6,background:C.bg3,borderRadius:8,padding:"8px 12px"}}>{task.desc}</div>}
+        </div>
+
+        {/* Comments */}
+        <div style={{flex:1,overflow:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:2}}>
+          {comments.length===0&&(
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:C.textM,fontSize:13,gap:8,paddingTop:40}}>
+              <span style={{fontSize:32}}>💬</span>
+              <span>ยังไม่มี comment</span>
+              <span style={{fontSize:11,color:C.textM}}>เริ่ม comment ด้านล่างได้เลยครับ</span>
+            </div>
+          )}
+          {comments.map((c,idx)=>{
+            const user=team.find(m=>m.id===c.uid)||SEED_TEAM[0];
+            const isSelf=c.uid===me.id;
+            const showDate=idx===0||(comments[idx-1].date!==c.date);
+            return(
+              <React.Fragment key={c._k||idx}>
+                {showDate&&<div style={{textAlign:"center",margin:"8px 0 3px"}}><span style={{fontSize:10,color:C.textM,background:C.bg3,padding:"2px 10px",borderRadius:99}}>{c.date}</span></div>}
+                <div style={{display:"flex",flexDirection:isSelf?"row-reverse":"row",gap:8,marginBottom:5,alignItems:"flex-end"}}>
+                  <Av initials={user.initials} color={user.color} size={26}/>
+                  <div style={{maxWidth:"80%"}}>
+                    {!isSelf&&<div style={{fontSize:10,color:C.textM,marginBottom:2,paddingLeft:2}}>{user.name}</div>}
+                    <div style={{background:isSelf?C.amber:C.bg3,color:isSelf?C.bg0:C.text,borderRadius:isSelf?"12px 3px 12px 12px":"3px 12px 12px 12px",padding:"8px 12px",fontSize:13,lineHeight:1.55,wordBreak:"break-word"}}>
+                      {parseMention(c.text,team)}
+                    </div>
+                    <div style={{fontSize:10,color:C.textM,marginTop:2,textAlign:isSelf?"right":"left"}}>{c.time}</div>
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          })}
+          <div ref={botRef}/>
+        </div>
+
+        {/* Mention dropdown */}
+        {mentionList.length>0&&(
+          <div style={{margin:"0 16px",background:C.bg2,border:`1px solid ${C.amber}50`,borderRadius:10,overflow:"hidden",maxHeight:150,overflowY:"auto",boxShadow:"0 -4px 16px rgba(0,0,0,.3)"}}>
+            {mentionList.map(m=>(
+              <div key={m.id} onClick={()=>insertMention(m)} style={{padding:"7px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontSize:13,transition:"background .1s"}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.bg3}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <Av initials={m.initials} color={m.color} size={24}/>
+                <span style={{fontWeight:600}}>{m.name}</span><span style={{color:C.textM,fontSize:11}}>{m.dept}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div style={{padding:"10px 14px",borderTop:`1px solid ${C.bd}`,display:"flex",gap:7,alignItems:"center",flexShrink:0,background:C.bg2}}>
+          <Av initials={me.initials} color={me.color} size={28}/>
+          <input ref={inputRef} value={input} onChange={handleInput}
+            onKeyDown={e=>{
+              if(e.key==="Enter"){e.preventDefault();if(mentionList.length>0)insertMention(mentionList[0]);else send();}
+              if(e.key==="Escape")setMentionQ(null);
+            }}
+            placeholder="comment... พิมพ์ @ เพื่อ mention (Enter)"
+            style={{flex:1,background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:9,padding:"8px 12px",color:C.text,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+          <button onClick={send} disabled={!input.trim()||busy} style={{background:input.trim()&&!busy?C.amber:C.bg3,border:"none",borderRadius:9,padding:"8px 14px",cursor:"pointer",fontWeight:700,fontSize:12,color:input.trim()&&!busy?C.bg0:C.textM,fontFamily:"inherit",flexShrink:0}}>
+            {busy?<Spin/>:"ส่ง"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   TASKS KANBAN
+════════════════════════════════ */
+function TasksView({me,team,toast,projects}){
+  const tasks=useGunSet('tasks');
+  const [fp,setFp]=useState("all");
+  const [fa,setFa]=useState("all");
+  const [newT,setNewT]=useState(null);
+  const [commentTask,setCommentTask]=useState(null); // task to show comments for
+
+  const pts=tasks.filter(t=>(fp==="all"||t.project===fp)&&(fa==="all"||String(t.uid)===fa));
+  const move=(task,status)=>{window.DB.get('tasks').get(task._k).put({...task,status,ts:task.ts});toast("อัพเดทสถานะ ✓");};
+  const add=()=>{
+    if(!newT?.title?.trim())return;
+    const k='t_'+Date.now();
+    window.DB.get('tasks').get(k).put({...newT,uid:parseInt(newT.uid),status:"todo",ts:Date.now(),created:new Date().toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"})});
+    setNewT(null);toast("สร้างงานสำเร็จ ✓");
+  };
+  const del=(task)=>{window.DB.get('tasks').get(task._k).put({...task,_d:true});toast("ลบงานแล้ว");};
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{padding:"10px 16px",borderBottom:`1px solid ${C.bd}`,display:"flex",gap:8,alignItems:"center",flexShrink:0,background:C.bg1,flexWrap:"wrap"}}>
+        <Sel value={fp} onChange={e=>setFp(e.target.value)} style={{width:165}}><option value="all">ทุกโปรเจกต์</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Sel>
+        <Sel value={fa} onChange={e=>setFa(e.target.value)} style={{width:120}}><option value="all">ทุกคน</option>{team.filter(m=>m.active).map(m=><option key={m.id} value={String(m.id)}>{m.name}</option>)}</Sel>
+        <span style={{fontSize:12,color:C.textM}}>{pts.length} งาน</span>
+        <div style={{marginLeft:"auto"}}><PBtn onClick={()=>setNewT({title:"",project:projects[0]?.id||"nara",uid:me.id,priority:"medium",deadline:"",desc:""})}>+ งานใหม่</PBtn></div>
+      </div>
+      {newT&&(
+        <div style={{padding:"12px 16px",background:C.amberBg,borderBottom:`1px solid ${C.amber}30`,flexShrink:0}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:8,marginBottom:8}}>
+            <Inp placeholder="ชื่องาน *" value={newT.title} onChange={e=>setNewT({...newT,title:e.target.value})}/>
+            <Sel value={newT.project} onChange={e=>setNewT({...newT,project:e.target.value})}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Sel>
+            <Sel value={String(newT.uid)} onChange={e=>setNewT({...newT,uid:e.target.value})}>{team.filter(m=>m.active).map(m=><option key={m.id} value={String(m.id)}>{m.name}</option>)}</Sel>
+            <Sel value={newT.priority} onChange={e=>setNewT({...newT,priority:e.target.value})}>{Object.entries(PRIO).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel>
+            <Inp placeholder="กำหนดส่ง" value={newT.deadline} onChange={e=>setNewT({...newT,deadline:e.target.value})}/>
+          </div>
+          <div style={{display:"flex",gap:8}}><Inp placeholder="รายละเอียด" value={newT.desc} onChange={e=>setNewT({...newT,desc:e.target.value})} style={{flex:1}}/><PBtn onClick={add}>บันทึก</PBtn><GBtn onClick={()=>setNewT(null)}>ยกเลิก</GBtn></div>
+        </div>
+      )}
+      <div style={{flex:1,overflow:"auto",padding:12,display:"flex",gap:10}}>
+        {STATUS.map(col=>{
+          const ct=pts.filter(t=>t.status===col.id);
+          return(
+            <div key={col.id} style={{flex:1,minWidth:200,background:C.bg1,borderRadius:12,display:"flex",flexDirection:"column",border:`1px solid ${C.bd}`,overflow:"hidden"}}>
+              <div style={{padding:"10px 12px",borderBottom:`2px solid ${col.color}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg2,flexShrink:0}}>
+                <span style={{fontSize:12,fontWeight:700,color:col.color}}>{col.label}</span>
+                <span style={{background:col.color,color:"#fff",borderRadius:99,padding:"1px 9px",fontSize:11,fontWeight:700}}>{ct.length}</span>
+              </div>
+              <div style={{flex:1,overflowY:"auto",padding:8,display:"flex",flexDirection:"column",gap:7}}>
+                {ct.map(task=>{
+                  const asn=team.find(m=>m.id===task.uid)||team[0];
+                  const pd=PRIO[task.priority]||PRIO.medium;
+                  const pj=projects.find(p=>p.id===task.project);
+                  return(
+                    <div key={task._k} style={{background:C.bg2,border:`1px solid ${C.bdL}`,borderRadius:10,padding:"10px 11px",borderLeft:`3px solid ${col.color}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                        <Chip label={pd.label} color={pd.color} bg={pd.bg}/>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>{asn&&<Av initials={asn.initials} color={asn.color} size={22}/>}<button onClick={()=>del(task)} style={{background:"transparent",border:"none",color:C.textM,fontSize:12,cursor:"pointer",padding:"0 2px"}}>✕</button></div>
+                      </div>
+                      <div style={{fontSize:13,fontWeight:600,marginBottom:4,lineHeight:1.35,cursor:"pointer"}} onClick={()=>setCommentTask(task)}>{task.title}</div>
+                      {task.desc&&<div style={{fontSize:11,color:C.textM,marginBottom:6,lineHeight:1.4}}>{task.desc.length>65?task.desc.slice(0,65)+"…":task.desc}</div>}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:10,color:C.textM}}>📅 {task.deadline}</span>
+                        <Sel value={task.status} onChange={e=>move(task,e.target.value)} style={{width:"auto",padding:"2px 6px",fontSize:10,borderRadius:6}}>{STATUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</Sel>
+                      </div>
+                      <div style={{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div style={{fontSize:10,color:C.textM}}>{pj?.icon} {pj?.name}</div>
+                        <button onClick={()=>setCommentTask(task)} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:7,padding:"3px 9px",cursor:"pointer",fontSize:11,color:C.textS,fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,transition:"all .15s"}}
+                          onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amber;e.currentTarget.style.color=C.amber;}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bdL;e.currentTarget.style.color=C.textS;}}>
+                          💬 comment
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {ct.length===0&&<div style={{textAlign:"center",color:C.textM,fontSize:12,padding:"24px 0",opacity:.4}}>ว่างอยู่</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+    {commentTask&&<TaskCommentModal task={commentTask} me={me} team={team} onClose={()=>setCommentTask(null)}/>}
+  );
+}
+
+/* ════════════════════════════════
+   SUBMIT WORK
+════════════════════════════════ */
+function SubmitView({me,team,tasks,toast,projects}){
+  const subs=useGunSet('subs');
+  const [sub,setSub]=useState({title:"",project:"nara",taskId:"",progress:50,detail:"",photos:[]});
+  const [isDrag,setIsDrag]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const fileRef=useRef();
+
+  const handleFiles=useCallback((files)=>{
+    const arr=Array.from(files).filter(f=>f.type.startsWith("image/"));
+    const rem=8-sub.photos.length;
+    if(rem<=0){toast("รูปเต็มแล้ว 8 รูปต่อรายงาน",true);return;}
+    arr.slice(0,rem).forEach(f=>{const r=new FileReader();r.onload=e=>setSub(p=>({...p,photos:[...p.photos,{src:e.target.result,name:f.name,size:Math.round(f.size/1024)+"KB"}]}));r.readAsDataURL(f);});
+  },[sub.photos.length,toast]);
+
+  const submit=async()=>{
+    if(!sub.title.trim()){toast("กรุณาใส่ชื่องาน",true);return;}
+    setBusy(true);
+    const report={
+      uid:me.id,
+      submitter:{id:me.id,name:me.name,surname:me.surname||"",dept:me.dept,role:me.role,phone:me.phone||""},
+      title:sub.title,project:sub.project,taskId:sub.taskId,progress:sub.progress,
+      detail:sub.detail,photos:sub.photos.map(p=>p.src),
+      time:new Date().toLocaleString("th-TH"),ts:Date.now()
+    };
+    window.DB.get('subs').set(report);
+    if(sub.taskId&&sub.progress>=100){
+      const task=tasks.find(t=>t._k===sub.taskId);
+      if(task)window.DB.get('tasks').get(task._k).put({...task,status:"review"});
+    }
+    setSub({title:"",project:"nara",taskId:"",progress:50,detail:"",photos:[]});
+    setBusy(false);toast("ส่งรายงานสำเร็จ ✓");
+  };
+
+  const pc=sub.progress>=100?C.green:sub.progress>=50?C.amber:C.red;
+  const pt=tasks.filter(t=>t.project===sub.project&&t.status!=="done");
+
+  return(
+    <div style={{flex:1,overflow:"auto",padding:20}}>
+      <div style={{maxWidth:640,margin:"0 auto"}}>
+        <Card style={{padding:"20px 22px",marginBottom:16}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.amber,marginBottom:18}}>📤 รายงานส่งงาน</div>
+          <Lbl>ชื่องาน *</Lbl>
+          <Inp value={sub.title} onChange={e=>setSub({...sub,title:e.target.value})} placeholder="เช่น ตรวจงาน MEP ชั้น 3 Hotel Wing" style={{marginBottom:12}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            <div><Lbl>โปรเจกต์</Lbl><Sel value={sub.project} onChange={e=>setSub({...sub,project:e.target.value,taskId:""})}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Sel></div>
+            <div><Lbl>งานที่เกี่ยวข้อง</Lbl><Sel value={sub.taskId} onChange={e=>setSub({...sub,taskId:e.target.value})}><option value="">-- เลือก (ถ้ามี) --</option>{pt.map(t=><option key={t._k} value={t._k}>{t.title}</option>)}</Sel></div>
+          </div>
+          <Lbl>ความคืบหน้า — {sub.progress}%</Lbl>
+          <input type="range" min={0} max={100} step={5} value={sub.progress} onChange={e=>setSub({...sub,progress:parseInt(e.target.value)})} style={{width:"100%",accentColor:pc,marginBottom:4}}/>
+          <div style={{height:6,background:C.bg3,borderRadius:99,marginBottom:12,overflow:"hidden"}}><div style={{height:"100%",width:`${sub.progress}%`,background:pc,borderRadius:99,transition:"width .3s"}}/></div>
+          <Lbl>รายละเอียดงาน</Lbl>
+          <TA value={sub.detail} onChange={e=>setSub({...sub,detail:e.target.value})} placeholder="อธิบายสิ่งที่ทำ ปัญหาที่พบ สิ่งที่ต้องดำเนินการต่อ..." style={{marginBottom:12}}/>
+          <Lbl>รูปภาพหน้างาน ({sub.photos.length}/8)</Lbl>
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>handleFiles(e.target.files)}/>
+          <div onDragOver={e=>{e.preventDefault();setIsDrag(true);}} onDragLeave={()=>setIsDrag(false)} onDrop={e=>{e.preventDefault();setIsDrag(false);handleFiles(e.dataTransfer.files);}} onClick={()=>fileRef.current?.click()}
+            style={{background:isDrag?C.amberBg:C.bg3,border:`2px dashed ${isDrag?C.amber:C.bdL}`,borderRadius:11,padding:"15px",textAlign:"center",cursor:"pointer",transition:"all .2s",marginBottom:sub.photos.length?10:14}}>
+            <div style={{fontSize:22,marginBottom:3}}>📷</div>
+            <div style={{color:C.textS,fontSize:12}}>คลิกหรือลากรูปมาวาง · JPG/PNG/HEIC</div>
+          </div>
+          {sub.photos.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))",gap:7,marginBottom:14}}>{sub.photos.map((ph,i)=>(
+            <div key={i} style={{position:"relative",aspectRatio:"1",borderRadius:8,overflow:"hidden",border:`1px solid ${C.bdL}`}}>
+              <img src={ph.src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+              <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.45)",opacity:0,transition:"opacity .15s",display:"flex",alignItems:"center",justifyContent:"center"}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
+                <button onClick={e=>{e.stopPropagation();setSub(p=>({...p,photos:p.photos.filter((_,j)=>j!==i)}));}} style={{background:C.red,border:"none",borderRadius:"50%",width:24,height:24,color:"#fff",cursor:"pointer",fontSize:13}}>✕</button>
+              </div>
+              <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,.7)",fontSize:8,color:"#94a3b8",padding:"2px 4px",textAlign:"center"}}>{ph.size}</div>
+            </div>
+          ))}</div>}
+          <button onClick={submit} disabled={busy} style={{width:"100%",background:busy?C.bg4:C.amber,color:busy?C.textM:C.bg0,border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .2s"}}>
+            {busy?<><Spin/>กำลังส่ง...</>:"ส่งรายงาน →"}
+          </button>
+        </Card>
+
+        {/* History */}
+        {subs.length>0&&<div>
+          <div style={{fontSize:11,fontWeight:700,color:C.textM,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.05em",display:"flex",alignItems:"center",gap:6}}>
+            ประวัติการส่งงาน <span style={{background:C.amberBg,color:C.amber,padding:"1px 8px",borderRadius:99}}>{subs.length}</span>
+          </div>
+          {[...subs].reverse().slice(0,20).map((s,idx)=>(
+            <Card key={s._k||idx} style={{padding:"14px 16px",marginBottom:9,borderLeft:`3px solid ${C.green}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:13.5,marginBottom:3}}>{s.title}</div>
+                  <div style={{fontSize:11.5,color:C.textM,marginBottom:s.detail?5:0}}>
+                    {projects.find(p=>p.id===s.project)?.name} · <span style={{color:s.progress>=100?C.green:C.amber,fontWeight:700}}>{s.progress}%</span>
+                    {s.submitter?.name&&<span> · {s.submitter.name}</span>} · {s.time}
+                  </div>
+                  {s.detail&&<div style={{fontSize:12,color:C.textS,lineHeight:1.5,marginBottom:s.photos?.length>0?8:0}}>{s.detail}</div>}
+                  {s.photos?.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{s.photos.slice(0,6).map((src,i)=><img key={i} src={src} alt="" style={{width:42,height:42,objectFit:"cover",borderRadius:6,border:`1px solid ${C.bdL}`}}/>)}{s.photos.length>6&&<div style={{width:42,height:42,background:C.bg3,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.textM}}>+{s.photos.length-6}</div>}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+                  <Chip label="ส่งแล้ว ✓" color={C.green} bg={C.greenBg}/>
+                  <button onClick={()=>genPDF(s,projects)} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:8,padding:"5px 12px",cursor:"pointer",color:C.textS,fontSize:12,fontFamily:"inherit"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amber;e.currentTarget.style.color=C.amber;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bdL;e.currentTarget.style.color=C.textS;}}>📄 PDF</button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   AI ASSISTANT
+════════════════════════════════ */
+function AIView({me}){
+  const [msgs,setMsgs]=useState([{role:"assistant",content:"สวัสดีครับ! ผมคือ RABBiZ AI 🏗️\n\nช่วยได้เรื่อง:\n• คำนวณโครงสร้าง / ปริมาณวัสดุ\n• มาตรฐาน EIT / วสท. / กฎหมายอาคาร\n• ประมาณราคาก่อสร้าง\n• แก้ปัญหาหน้างาน MEP / Structural\n\nถามได้เลยครับ!"}]);
+  const [input,setInput]=useState("");
+  const [busy,setBusy]=useState(false);
+  const botRef=useRef();
+  const QUICK=["คำนวณปริมาตรคอนกรีต 5×8×0.2m","มาตรฐาน EIT เหล็กโครงสร้าง","ค่าแรงก่อสร้าง 2569","ขออนุญาตก่อสร้างต้องทำอะไรบ้าง","ปัญหา Settlement ฐานราก","โหลดไฟฟ้า 3 เฟส วิธีคำนวณ"];
+  useEffect(()=>{botRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+  const ask=async()=>{
+    if(!input.trim()||busy)return;
+    const um={role:"user",content:input.trim()};
+    const hist=[...msgs.filter(m=>m.role!=="system").slice(-14),um];
+    setMsgs(p=>[...p,um]);setInput("");setBusy(true);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,
+          system:"คุณคือผู้เชี่ยวชาญวิศวกรรมก่อสร้างและอสังหาริมทรัพย์ RABBiZ Group ประเทศไทย ตอบภาษาไทยเสมอ กระชับ ชัดเจน ใช้งานได้จริง ถ้าถามคำนวณแสดงสูตรด้วย",
+          messages:hist})});
+      const d=await res.json();
+      setMsgs(p=>[...p,{role:"assistant",content:d.content?.[0]?.text||"ขอโทษครับ ลองใหม่"}]);
+    }catch{setMsgs(p=>[...p,{role:"assistant",content:"❌ ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่ครับ"}]);}
+    setBusy(false);
+  };
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{padding:"10px 18px",background:C.bg1,borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+        <div style={{width:34,height:34,borderRadius:10,background:C.amberBg,border:`1px solid ${C.amber}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>🤖</div>
+        <div><div style={{fontWeight:600,fontSize:13}}>RABBiZ AI Assistant</div><div style={{fontSize:11,color:C.textM}}>ผู้เชี่ยวชาญวิศวกรรมก่อสร้าง · Claude</div></div>
+        <div style={{marginLeft:"auto",width:8,height:8,borderRadius:"50%",background:C.green,animation:"pulse 2s infinite"}}/>
+      </div>
+      <div style={{flex:1,overflow:"auto",padding:"14px 18px",display:"flex",flexDirection:"column",gap:3}}>
+        {msgs.map((msg,i)=>(
+          <div key={i} style={{display:"flex",flexDirection:msg.role==="user"?"row-reverse":"row",gap:10,marginBottom:12,alignItems:"flex-end"}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:msg.role==="user"?me.color:C.amber,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.bg0,flexShrink:0}}>{msg.role==="user"?me.initials:"AI"}</div>
+            <div style={{maxWidth:"76%",background:msg.role==="user"?C.amber:C.bg3,color:msg.role==="user"?C.bg0:C.text,borderRadius:msg.role==="user"?"14px 3px 14px 14px":"3px 14px 14px 14px",padding:"10px 14px",lineHeight:1.65,fontSize:13.5,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{msg.content}</div>
+          </div>
+        ))}
+        {busy&&<div style={{display:"flex",gap:10,alignItems:"flex-end",marginBottom:12}}><div style={{width:32,height:32,borderRadius:"50%",background:C.amber,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.bg0}}>AI</div><div style={{background:C.bg3,borderRadius:"3px 14px 14px 14px",padding:"12px 16px",display:"flex",gap:5,alignItems:"center"}}>{[0,.2,.4].map((d,i)=><span key={i} style={{width:6,height:6,borderRadius:"50%",background:C.textM,display:"inline-block",animation:`pulse 1s ${d}s infinite`}}/>)}</div></div>}
+        <div ref={botRef}/>
+      </div>
+      <div style={{padding:"7px 16px 4px",display:"flex",gap:6,flexWrap:"wrap",borderTop:`1px solid ${C.bd}`,flexShrink:0}}>
+        {QUICK.map(q=><button key={q} onClick={()=>setInput(q)} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:99,padding:"3px 11px",color:C.textS,fontSize:11.5,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amber+"60";e.currentTarget.style.color=C.amber;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bdL;e.currentTarget.style.color=C.textS;}}>{q}</button>)}
+      </div>
+      <div style={{padding:"10px 16px",borderTop:`1px solid ${C.bd}`,display:"flex",gap:8,background:C.bg1,flexShrink:0}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="ถามเรื่องวิศวกรรม วัสดุ มาตรฐาน คำนวณ... (Enter)" style={{flex:1,background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:10,padding:"10px 14px",color:C.text,fontSize:13.5,outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={ask} disabled={busy||!input.trim()} style={{background:busy||!input.trim()?C.bg3:C.amber,color:busy||!input.trim()?C.textM:C.bg0,border:"none",borderRadius:10,padding:"10px 20px",cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:"inherit",transition:"all .2s",flexShrink:0}}>{busy?"…":"ถาม →"}</button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   TEAM MANAGEMENT
+════════════════════════════════ */
+function TeamView({team,tasks,subs,toast,projects}){
+  const [showAdd,setShowAdd]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [confDel,setConfDel]=useState(null);
+  const [permM,setPermM]=useState(null);
+  const [frole,setFrole]=useState("all");
+  const [newM,setNewM]=useState({name:"",surname:"",role:"engineer",dept:"",initials:"",color:"#3b82f6",phone:"",pin:""});
+  /* ── Project state ── */
+  const [showAddP,setShowAddP]=useState(false);
+  const [editingP,setEditingP]=useState(null);
+  const [confDelP,setConfDelP]=useState(null);
+  const [newP,setNewP]=useState({name:"",icon:"🏗",color:"#f59e0b"});
+  const ICONS=["🏗","🏢","🏭","🏠","🏪","🏨","🏬","🏦","🏡","🏰","🌆","🗼","📦","🔧","⚙️","🌿","🛒","🎯","🏆","🔑"];
+  const saveP=(p)=>window.DB.get('projects').get(p.id||p._k).put({...p,_d:undefined});
+  const delP=(p)=>window.DB.get('projects').get(p._k||p.id).put({...p,_d:true});
+  const addP=()=>{
+    if(!newP.name.trim()){toast("กรุณาใส่ชื่อโปรเจกต์",true);return;}
+    const id='p_'+Date.now();
+    window.DB.get('projects').get(id).put({id,name:newP.name.trim(),icon:newP.icon,color:newP.color,ts:Date.now()});
+    setNewP({name:"",icon:"🏗",color:"#f59e0b"});setShowAddP(false);toast("เพิ่มโปรเจกต์สำเร็จ ✓");
+  };
+  const ALLP=[["chat","💬 สนทนา"],["tasks","📋 สั่งงาน"],["submit","📤 ส่งงาน"],["ai","🤖 AI"],["pdf","📄 PDF"],["team","👥 ทีม"]];
+
+  const saveM=(m)=>window.DB.get('team').get(String(m.id)).put({...m});
+  const delM=(id)=>window.DB.get('team').get(String(id)).put({_d:true,id});
+  const toggleM=(m)=>saveM({...m,active:!m.active});
+  const filt=team.filter(m=>m&&!m._d&&(frole==="all"||m.role===frole));
+
+  return(
+    <div style={{flex:1,overflow:"auto",padding:20}}>
+      <div style={{maxWidth:800,margin:"0 auto"}}>
+        {/* Modals */}
+        {confDel&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Card style={{padding:26,width:330,textAlign:"center",animation:"fadeUp .2s ease"}}>
+            <div style={{fontSize:34,marginBottom:10}}>⚠️</div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>ลบสมาชิก?</div>
+            <div style={{fontSize:13,color:C.textM,marginBottom:20}}>ลบ <b style={{color:C.text}}>{team.find(m=>m.id===confDel)?.name}</b> ออกจากระบบ</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}><GBtn onClick={()=>setConfDel(null)}>ยกเลิก</GBtn><DBtn onClick={()=>{delM(confDel);setConfDel(null);toast("ลบสมาชิกแล้ว");}}>ลบออก</DBtn></div>
+          </Card>
+        </div>}
+        {permM&&(()=>{const m=team.find(x=>x.id===permM);if(!m)return null;const perms=ROLES[m.role]?.perms||[];return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Card style={{padding:22,width:370,animation:"fadeUp .2s ease"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><Av initials={m.initials} color={m.color} size={40}/><div><div style={{fontWeight:700,fontSize:14}}>{m.name} {m.surname}</div><div style={{fontSize:12,color:C.textM}}>{m.dept}</div></div><div style={{marginLeft:"auto"}}><Chip label={ROLES[m.role]?.label} color={ROLES[m.role]?.color} bg={ROLES[m.role]?.bg}/></div></div>
+              <div style={{fontSize:11,fontWeight:700,color:C.textM,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.04em"}}>สิทธิ์การเข้าถึง</div>
+              {ALLP.map(([pk,pl])=><div key={pk} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 12px",borderRadius:8,background:perms.includes(pk)?C.greenBg:C.bg3,marginBottom:5,border:`1px solid ${perms.includes(pk)?"rgba(16,185,129,.2)":C.bdL}`}}><span style={{fontSize:13}}>{pl}</span><span style={{fontSize:12,fontWeight:700,color:perms.includes(pk)?C.green:C.textM}}>{perms.includes(pk)?"✓ อนุญาต":"✗ ปิดกั้น"}</span></div>)}
+              <GBtn onClick={()=>setPermM(null)} style={{width:"100%",marginTop:14}}>ปิด</GBtn>
+            </Card>
+          </div>
+        );})()}
+
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+          {[{l:"สมาชิก",v:team.filter(m=>!m._d).length,c:C.amber},{l:"ออนไลน์",v:team.filter(m=>!m._d&&m.active).length,c:C.green},{l:"วิศวกร",v:team.filter(m=>!m._d&&m.role==="engineer").length,c:C.blue},{l:"งานรวม",v:tasks.length,c:C.purple}].map((s,i)=>(
+            <Card key={i} style={{padding:"12px 16px"}}><div style={{fontSize:24,fontWeight:700,color:s.c,lineHeight:1}}>{s.v}</div><div style={{fontSize:11,color:C.textM,marginTop:4}}>{s.l}</div></Card>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+          <Sel value={frole} onChange={e=>setFrole(e.target.value)} style={{width:150}}><option value="all">ทุก Role</option>{Object.entries(ROLES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel>
+          <span style={{fontSize:12,color:C.textM}}>{filt.length} คน</span>
+          <div style={{marginLeft:"auto"}}><PBtn onClick={()=>setShowAdd(true)}>+ เพิ่มสมาชิก</PBtn></div>
+        </div>
+
+        {/* Add form */}
+        {showAdd&&<Card style={{padding:"16px 18px",marginBottom:14,border:`1px solid ${C.amber}40`,background:C.amberBg}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.amber,marginBottom:12}}>✚ เพิ่มสมาชิกใหม่</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+            <div><Lbl>ชื่อ *</Lbl><Inp value={newM.name} onChange={e=>setNewM({...newM,name:e.target.value})} placeholder="ชื่อ"/></div>
+            <div><Lbl>นามสกุล</Lbl><Inp value={newM.surname} onChange={e=>setNewM({...newM,surname:e.target.value})} placeholder="นามสกุล"/></div>
+            <div><Lbl>แผนก *</Lbl><Inp value={newM.dept} onChange={e=>setNewM({...newM,dept:e.target.value})} placeholder="เช่น MEP, โครงสร้าง"/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr auto",gap:8}}>
+            <div><Lbl>Role</Lbl><Sel value={newM.role} onChange={e=>setNewM({...newM,role:e.target.value})}>{Object.entries(ROLES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel></div>
+            <div><Lbl>เบอร์โทร</Lbl><Inp value={newM.phone} onChange={e=>setNewM({...newM,phone:e.target.value})} placeholder="08X-XXX"/></div>
+            <div><Lbl>ชื่อย่อ</Lbl><Inp value={newM.initials} onChange={e=>setNewM({...newM,initials:e.target.value.slice(0,3)})} placeholder="2-3 ตัว" maxLength={3}/></div>
+            <div><Lbl>PIN</Lbl><Inp type="password" value={newM.pin} onChange={e=>setNewM({...newM,pin:e.target.value})} placeholder="4 หลัก" maxLength={4}/></div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}><Lbl>สี</Lbl><input type="color" value={newM.color} onChange={e=>setNewM({...newM,color:e.target.value})} style={{width:40,height:36,border:`1px solid ${C.bdL}`,borderRadius:8,cursor:"pointer",background:"transparent"}}/></div>
+          </div>
+          {newM.name&&<div style={{marginTop:10,background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:8,padding:"8px 12px",display:"flex",alignItems:"center",gap:10}}><Av initials={newM.initials||(newM.name[0]+(newM.surname[0]||""))} color={newM.color} size={30}/><span style={{fontSize:13}}>{newM.name} {newM.surname} — {newM.dept}</span><Chip label={ROLES[newM.role]?.label} color={ROLES[newM.role]?.color} bg={ROLES[newM.role]?.bg}/></div>}
+          <div style={{marginTop:12,display:"flex",gap:8}}>
+            <PBtn onClick={()=>{
+              if(!newM.name.trim()||!newM.dept.trim()){toast("กรอกชื่อและแผนกด้วยครับ",true);return;}
+              const id=Date.now();const ini=newM.initials||(newM.name[0]+(newM.surname[0]||""));
+              saveM({id,...newM,initials:ini,active:true});
+              setNewM({name:"",surname:"",role:"engineer",dept:"",initials:"",color:"#3b82f6",phone:"",pin:""});
+              setShowAdd(false);toast("เพิ่มสมาชิกสำเร็จ ✓");
+            }}>บันทึก</PBtn>
+            <GBtn onClick={()=>setShowAdd(false)}>ยกเลิก</GBtn>
+          </div>
+        </Card>}
+
+        {/* Edit form */}
+        {editing&&<Card style={{padding:"16px 18px",marginBottom:14,border:`1px solid ${C.blue}40`,background:C.blueBg}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.blue,marginBottom:12}}>✏️ แก้ไข: {editing.name}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:8}}>
+            <div><Lbl>ชื่อ</Lbl><Inp value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}/></div>
+            <div><Lbl>นามสกุล</Lbl><Inp value={editing.surname||""} onChange={e=>setEditing({...editing,surname:e.target.value})}/></div>
+            <div><Lbl>แผนก</Lbl><Inp value={editing.dept} onChange={e=>setEditing({...editing,dept:e.target.value})}/></div>
+            <div><Lbl>เบอร์โทร</Lbl><Inp value={editing.phone||""} onChange={e=>setEditing({...editing,phone:e.target.value})}/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8}}>
+            <div><Lbl>Role</Lbl><Sel value={editing.role} onChange={e=>setEditing({...editing,role:e.target.value})}>{Object.entries(ROLES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</Sel></div>
+            <div><Lbl>ชื่อย่อ</Lbl><Inp value={editing.initials} maxLength={3} onChange={e=>setEditing({...editing,initials:e.target.value})}/></div>
+            <div><Lbl>PIN ใหม่</Lbl><Inp type="password" placeholder="ปล่อยว่าง=ไม่เปลี่ยน" maxLength={4} value={editing._np||""} onChange={e=>setEditing({...editing,_np:e.target.value})}/></div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}><Lbl>สี</Lbl><input type="color" value={editing.color} onChange={e=>setEditing({...editing,color:e.target.value})} style={{width:40,height:36,border:`1px solid ${C.bdL}`,borderRadius:8,cursor:"pointer",background:"transparent"}}/></div>
+          </div>
+          <div style={{marginTop:12,display:"flex",gap:8}}>
+            <PBtn onClick={()=>{const m={...editing};if(m._np){m.pin=m._np;delete m._np;}saveM(m);setEditing(null);toast("บันทึกแล้ว ✓");}}>บันทึก</PBtn>
+            <GBtn onClick={()=>setEditing(null)}>ยกเลิก</GBtn>
+          </div>
+        </Card>}
+
+        {/* Member list */}
+        <div style={{display:"flex",flexDirection:"column",gap:9}}>
+          {filt.map(m=>{
+            if(!m||m._d)return null;
+            const rd=ROLES[m.role]||ROLES.viewer;
+            const tc=tasks.filter(t=>t.uid===m.id&&t.status!=="done").length;
+            const sc=subs.filter(s=>s.uid===m.id).length;
+            return(
+              <Card key={m.id} style={{padding:"14px 16px",opacity:m.active?1:.5,transition:"opacity .2s"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                  <Av initials={m.initials} color={m.color} size={44} dot={m.active?"on":"off"}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",marginBottom:3}}><span style={{fontWeight:700,fontSize:14}}>{m.name} {m.surname}</span><Chip label={rd.label} color={rd.color} bg={rd.bg}/>{!m.active&&<Chip label="ปิดใช้งาน" color={C.textM} bg={C.bg4}/>}</div>
+                    <div style={{fontSize:12,color:C.textM}}>{m.dept}{m.phone&&` · ${m.phone}`}</div>
+                  </div>
+                  <div style={{display:"flex",gap:14}}>
+                    {[{v:tc,l:"งานค้าง",c:tc>0?C.amber:C.textM},{v:sc,l:"รายงาน",c:C.green}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:18,fontWeight:700,color:s.c,lineHeight:1}}>{s.v}</div><div style={{fontSize:9,color:C.textM,marginTop:2}}>{s.l}</div></div>)}
+                  </div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    <button onClick={()=>setPermM(m.id)} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12,color:C.textS,fontFamily:"inherit"}}>🔐</button>
+                    <button onClick={()=>setEditing({...m})} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12,color:C.textS,fontFamily:"inherit"}}>✏️</button>
+                    <button onClick={()=>toggleM(m)} style={{background:m.active?C.greenBg:C.redBg,border:`1px solid ${m.active?"rgba(16,185,129,.25)":"rgba(239,68,68,.25)"}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12,color:m.active?C.green:C.red,fontFamily:"inherit"}}>{m.active?"✓ ใช้งาน":"✗ ปิด"}</button>
+                    <DBtn onClick={()=>setConfDel(m.id)}>🗑</DBtn>
+                  </div>
+                </div>
+                <div style={{marginTop:9,display:"flex",gap:5,flexWrap:"wrap"}}>{ALLP.map(([pk,pl])=>{const has=rd.perms.includes(pk);return<span key={pk} style={{fontSize:10.5,padding:"2px 9px",borderRadius:99,background:has?C.greenBg:C.bg3,color:has?C.green:C.textM,border:`1px solid ${has?"rgba(16,185,129,.2)":C.bdL}`}}>{pl}</span>;})}</div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* ── PROJECTS SECTION ── */}
+        <div style={{marginTop:28}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700}}>📁 จัดการโปรเจกต์</div>
+              <div style={{fontSize:12,color:C.textM,marginTop:2}}>เพิ่ม ลบ แก้ไขชื่อ icon และสีของแต่ละโปรเจกต์</div>
+            </div>
+            <PBtn onClick={()=>setShowAddP(true)}>+ โปรเจกต์ใหม่</PBtn>
+          </div>
+
+          {/* Add project form */}
+          {showAddP&&<Card style={{padding:"16px 18px",marginBottom:14,border:`1px solid ${C.amber}40`,background:C.amberBg}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.amber,marginBottom:12}}>✚ โปรเจกต์ใหม่</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"end",marginBottom:12}}>
+              <div><Lbl>ชื่อโปรเจกต์ *</Lbl><Inp value={newP.name} onChange={e=>setNewP({...newP,name:e.target.value})} placeholder="เช่น คอนโด อ่อนนุช, Satoshi Tower"/></div>
+              <div><Lbl>สี</Lbl><input type="color" value={newP.color} onChange={e=>setNewP({...newP,color:e.target.value})} style={{width:44,height:38,border:`1px solid ${C.bdL}`,borderRadius:8,cursor:"pointer",background:"transparent"}}/></div>
+              <div style={{paddingBottom:0}}>
+                {newP.name&&<div style={{height:38,paddingLeft:12,paddingRight:12,borderRadius:9,background:`${newP.color}20`,border:`1px solid ${newP.color}60`,display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:600,color:newP.color,whiteSpace:"nowrap"}}>{newP.icon} {newP.name}</div>}
+              </div>
+            </div>
+            <Lbl>เลือก Icon</Lbl>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+              {ICONS.map(ic=><button key={ic} onClick={()=>setNewP({...newP,icon:ic})} style={{width:36,height:36,borderRadius:8,border:`2px solid ${newP.icon===ic?C.amber:C.bdL}`,background:newP.icon===ic?C.amberBg:C.bg3,fontSize:18,cursor:"pointer",transition:"all .15s"}}>{ic}</button>)}
+            </div>
+            <div style={{display:"flex",gap:8}}><PBtn onClick={addP}>บันทึก</PBtn><GBtn onClick={()=>setShowAddP(false)}>ยกเลิก</GBtn></div>
+          </Card>}
+
+          {/* Edit project form */}
+          {editingP&&<Card style={{padding:"16px 18px",marginBottom:14,border:`1px solid ${C.blue}40`,background:C.blueBg}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.blue,marginBottom:12}}>✏️ แก้ไขโปรเจกต์</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"end",marginBottom:12}}>
+              <div><Lbl>ชื่อโปรเจกต์</Lbl><Inp value={editingP.name} onChange={e=>setEditingP({...editingP,name:e.target.value})}/></div>
+              <div><Lbl>สี</Lbl><input type="color" value={editingP.color} onChange={e=>setEditingP({...editingP,color:e.target.value})} style={{width:44,height:38,border:`1px solid ${C.bdL}`,borderRadius:8,cursor:"pointer",background:"transparent"}}/></div>
+            </div>
+            <Lbl>เลือก Icon</Lbl>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+              {ICONS.map(ic=><button key={ic} onClick={()=>setEditingP({...editingP,icon:ic})} style={{width:36,height:36,borderRadius:8,border:`2px solid ${editingP.icon===ic?C.amber:C.bdL}`,background:editingP.icon===ic?C.amberBg:C.bg3,fontSize:18,cursor:"pointer",transition:"all .15s"}}>{ic}</button>)}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <PBtn onClick={()=>{saveP(editingP);setEditingP(null);toast("บันทึกโปรเจกต์แล้ว ✓");}}>บันทึก</PBtn>
+              <GBtn onClick={()=>setEditingP(null)}>ยกเลิก</GBtn>
+            </div>
+          </Card>}
+
+          {/* Confirm delete project */}
+          {confDelP&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <Card style={{padding:26,width:340,textAlign:"center",animation:"fadeUp .2s ease"}}>
+              <div style={{fontSize:34,marginBottom:10}}>⚠️</div>
+              <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>ลบโปรเจกต์?</div>
+              <div style={{fontSize:13,color:C.textM,marginBottom:6}}>ลบ <b style={{color:C.text}}>{confDelP.icon} {confDelP.name}</b></div>
+              <div style={{fontSize:12,color:C.red,marginBottom:20}}>งานที่ผูกกับโปรเจกต์นี้จะยังอยู่ในระบบ แต่จะไม่แสดงใน Project tab</div>
+              <div style={{display:"flex",gap:10,justifyContent:"center"}}><GBtn onClick={()=>setConfDelP(null)}>ยกเลิก</GBtn><DBtn onClick={()=>{delP(confDelP);setConfDelP(null);toast("ลบโปรเจกต์แล้ว");}}>ลบออก</DBtn></div>
+            </Card>
+          </div>}
+
+          {/* Project list */}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {projects.map(p=>{
+              const ptc=tasks.filter(t=>t.project===p.id&&t.status!=="done").length;
+              const ptotal=tasks.filter(t=>t.project===p.id).length;
+              return(
+                <Card key={p._k||p.id} style={{padding:"14px 16px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{width:44,height:44,borderRadius:12,background:`${p.color}20`,border:`2px solid ${p.color}50`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{p.icon}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:14,color:p.color}}>{p.name}</div>
+                      <div style={{fontSize:12,color:C.textM,marginTop:2}}>
+                        งานทั้งหมด {ptotal} · ค้างดำเนินการ <span style={{color:ptc>0?C.amber:C.green,fontWeight:600}}>{ptc}</span>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:5}}>
+                      <button onClick={()=>setEditingP({...p})} style={{background:C.bg3,border:`1px solid ${C.bdL}`,borderRadius:7,padding:"5px 9px",cursor:"pointer",fontSize:12,color:C.textS,fontFamily:"inherit"}}>✏️ แก้ไข</button>
+                      <DBtn onClick={()=>setConfDelP(p)}>🗑 ลบ</DBtn>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+            {projects.length===0&&<div style={{textAlign:"center",color:C.textM,padding:"24px",fontSize:13}}>ยังไม่มีโปรเจกต์ กด "+ โปรเจกต์ใหม่" เพื่อเพิ่มครับ</div>}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════
+   ROOT APP
+════════════════════════════════ */
+function App(){
+  const [me,setMe]=useState(()=>{try{return JSON.parse(localStorage.getItem('rz_me')||'null');}catch{return null;}});
+  const team=useGunTeam();
+  const tasks=useGunSet('tasks');
+  const subs=useGunSet('subs');
+  const projects=useGunProjects();
+  const [view,setView]=useState("chat");
+  const [proj,setProj]=useState(null);
+  const [notif,setNotif]=useState(null);
+  const toast=useCallback((msg,err=false)=>{setNotif({msg,err});setTimeout(()=>setNotif(null),3000);},[]);
+
+  useEffect(()=>{seedIfNeeded();},[]);
+  // Auto-select first project
+  useEffect(()=>{if(projects.length>0&&!proj)setProj(projects[0].id);},[projects.length]);
+
+  const login=(m)=>{setMe(m);try{localStorage.setItem('rz_me',JSON.stringify(m));}catch{}};
+  const logout=()=>{setMe(null);try{localStorage.removeItem('rz_me');}catch{}};
+
+  if(!me)return<LoginScreen team={team} onLogin={login}/>;
+
+  const meD=team.find(m=>m.id===me.id)||me;
+  const activeProj=proj||(projects[0]?.id)||"";
+  const pa=tasks.filter(t=>t.status!=="done").length;
+  const TABS=[{id:"chat",icon:"💬",label:"สนทนา"},{id:"tasks",icon:"📋",label:"สั่งงาน",badge:pa},{id:"submit",icon:"📤",label:"ส่งงาน"},{id:"ai",icon:"🤖",label:"AI"},{id:"team",icon:"👥",label:"ทีม"}];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg0,overflow:"hidden"}}>
+      <Toast n={notif}/>
+      {/* TOP BAR */}
+      <div style={{height:52,background:C.bg1,borderBottom:`1px solid ${C.bd}`,display:"flex",alignItems:"center",padding:"0 14px",gap:10,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,paddingRight:10,borderRight:`1px solid ${C.bd}`,flexShrink:0}}>
+          <div style={{width:30,height:30,borderRadius:9,background:C.amber,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:C.bg0,fontSize:12,boxShadow:"0 4px 10px rgba(245,158,11,.25)"}}>RZ</div>
+          <div style={{fontSize:13,fontWeight:700,lineHeight:1}}>TeamHub<span style={{fontSize:9,fontWeight:400,color:C.textM,marginLeft:4}}>v2</span></div>
+        </div>
+        {/* Project tabs — dynamic */}
+        <div style={{display:"flex",gap:4,overflowX:"auto",flex:1,alignItems:"center"}}>
+          {projects.map(p=>{
+            const pc=tasks.filter(t=>t.project===p.id&&t.status!=="done").length;
+            return(
+              <button key={p._k||p.id} onClick={()=>setProj(p.id)} style={{padding:"4px 12px",borderRadius:7,border:`1px solid ${activeProj===p.id?p.color+"60":C.bdL}`,background:activeProj===p.id?`${p.color}18`:"transparent",color:activeProj===p.id?p.color:C.textM,fontSize:12,fontWeight:activeProj===p.id?600:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
+                {p.icon} {p.name}{pc>0&&<span style={{background:p.color,color:"#fff",borderRadius:99,padding:"0 5px",fontSize:9.5,fontWeight:700}}>{pc}</span>}
+              </button>
+            );
+          })}
+          {/* Quick add project */}
+          <button onClick={()=>setView("team")} title="จัดการโปรเจกต์" style={{width:26,height:26,borderRadius:7,border:`1px dashed ${C.bdL}`,background:"transparent",color:C.textM,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amber;e.currentTarget.style.color=C.amber;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bdL;e.currentTarget.style.color=C.textM;}}>+</button>
+        </div>
+        {/* Right: avatars + me */}
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <div style={{display:"flex"}}>{team.filter(m=>m.active&&!m._d).slice(0,5).map((m,i)=><div key={m.id} title={m.name} style={{width:22,height:22,borderRadius:"50%",background:m.color,border:`2px solid ${C.bg1}`,marginLeft:i?-6:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,fontWeight:700,color:"#fff",zIndex:10-i,position:"relative"}}>{m.initials}</div>)}</div>
+          <span style={{fontSize:11,color:C.textM}}>{team.filter(m=>m.active&&!m._d).length} คน</span>
+          <div style={{width:1,height:16,background:C.bd}}/>
+          <div style={{display:"flex",alignItems:"center",gap:6,background:C.amberBg,border:`1px solid ${C.amber}30`,borderRadius:18,padding:"3px 10px 3px 4px",cursor:"pointer"}} onClick={()=>setView("team")}>
+            <Av initials={meD.initials} color={meD.color} size={24} dot="on"/>
+            <span style={{fontSize:12,fontWeight:600,color:C.amber}}>{meD.name}</span>
+          </div>
+          <button onClick={logout} title="ออกจากระบบ" style={{background:"transparent",border:`1px solid ${C.bdL}`,borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12,color:C.textM,fontFamily:"inherit"}}>⎋</button>
+        </div>
+      </div>
+
+      {/* LAYOUT */}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        {/* Sidebar */}
+        <div style={{width:54,background:C.bg1,borderRight:`1px solid ${C.bd}`,display:"flex",flexDirection:"column",flexShrink:0}}>
+          {TABS.map(tab=>(
+            <button key={tab.id} onClick={()=>setView(tab.id)} title={tab.label} style={{width:"100%",padding:"11px 0",border:"none",background:view===tab.id?C.amberBg:"transparent",color:view===tab.id?C.amber:C.textM,cursor:"pointer",fontFamily:"inherit",borderLeft:`3px solid ${view===tab.id?C.amber:"transparent"}`,transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",gap:2,position:"relative"}}>
+              <span style={{fontSize:18}}>{tab.icon}</span>
+              <span style={{fontSize:9,fontWeight:view===tab.id?700:400}}>{tab.label}</span>
+              {tab.badge>0&&<div style={{position:"absolute",top:7,right:7,minWidth:15,height:15,borderRadius:99,background:C.amber,color:C.bg0,fontSize:8.5,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{tab.badge>99?"99+":tab.badge}</div>}
+            </button>
+          ))}
+          <div style={{flex:1}}/>
+          <div style={{padding:"8px 0",borderTop:`1px solid ${C.bd}`,textAlign:"center"}}>
+            <div style={{width:7,height:7,borderRadius:"50%",background:C.green,margin:"0 auto",animation:"pulse 2s infinite"}} title="Real-time syncing"/>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          {view==="chat"  &&<ChatView   proj={activeProj} me={meD} team={team} projects={projects}/>}
+          {view==="tasks" &&<TasksView  me={meD} team={team} toast={toast} projects={projects}/>}
+          {view==="submit"&&<SubmitView me={meD} team={team} tasks={tasks} toast={toast} projects={projects}/>}
+          {view==="ai"    &&<AIView     me={meD}/>}
+          {view==="team"  &&<TeamView   team={team} tasks={tasks} subs={subs} toast={toast} projects={projects}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
